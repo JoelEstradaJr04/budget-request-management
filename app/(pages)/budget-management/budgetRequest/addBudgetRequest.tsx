@@ -7,25 +7,21 @@ import { showSuccess, showError, showConfirmation } from '../../../utils/Alerts'
 import { validateField, isValidAmount, ValidationRule } from "../../../utils/validation";
 import ModalHeader from '../../../Components/ModalHeader';
 
-// Types
+// Types - Updated to align with new schema
 interface BudgetItem {
-  item_name: string;
-  quantity: number;
-  unit_measure: string;
-  unit_cost: number;
-  supplier: string;
-  subtotal: number;
-  itemPriority?: 'must_have' | 'should_have' | 'nice_to_have';
-  isEssential?: boolean;
+  category_id?: number;
+  description?: string;
+  requested_amount: number;
+  notes?: string;
 }
 
 interface NewBudgetRequest {
   purpose: string;
-  justification: string;
+  justification: string; // Will be mapped to 'remarks' by parent
   department: string;
   createdByName: string;
   createdByRole: string;
-  amountRequested: number;
+  amountRequested: number; // Will be mapped to 'total_amount' by parent
   fiscalYear: number;
   fiscalPeriod: string;
   category: string;
@@ -35,8 +31,9 @@ interface NewBudgetRequest {
   end_date?: string;
   items?: BudgetItem[];
   supporting_documents?: File[];
-  status: 'DRAFT' | 'SUBMITTED';
+  status: 'DRAFT' | 'SUBMITTED'; // Legacy - parent maps to PENDING
   createdBy: number;
+  requested_for?: string;
 }
 
 interface AddBudgetRequestProps {
@@ -189,7 +186,7 @@ const AddBudgetRequest: React.FC<AddBudgetRequestProps> = ({
 
   // Calculate total from items
   const calculateTotalFromItems = () => {
-    return items.reduce((total, item) => total + item.subtotal, 0);
+    return items.reduce((total, item) => total + item.requested_amount, 0);
   };
 
   // Update amount requested when items change
@@ -221,14 +218,10 @@ const AddBudgetRequest: React.FC<AddBudgetRequestProps> = ({
   // Item management functions
   const addItem = () => {
     setItems(prev => [...prev, {
-      item_name: '',
-      quantity: 1,
-      unit_measure: 'pcs',
-      unit_cost: 0,
-      supplier: '',
-      subtotal: 0,
-      itemPriority: undefined,
-      isEssential: false
+      category_id: undefined,
+      description: '',
+      requested_amount: 0,
+      notes: ''
     }]);
   };
 
@@ -236,16 +229,10 @@ const AddBudgetRequest: React.FC<AddBudgetRequestProps> = ({
     setItems(prev => prev.filter((_, i) => i !== index));
   };
 
-  const updateItem = (index: number, field: keyof BudgetItem, value: string | number | boolean) => {
+  const updateItem = (index: number, field: keyof BudgetItem, value: string | number) => {
     setItems(prev => {
       const updated = [...prev];
       updated[index] = { ...updated[index], [field]: value };
-      
-      // Recalculate subtotal if quantity or unit_cost changes
-      if (field === 'quantity' || field === 'unit_cost') {
-        updated[index].subtotal = updated[index].quantity * updated[index].unit_cost;
-      }
-      
       return updated;
     });
   };
@@ -359,14 +346,12 @@ const AddBudgetRequest: React.FC<AddBudgetRequestProps> = ({
     // Validate items if they exist (only when not saving as draft)
     if (showItems && items.length > 0 && !saveAsDraft) {
       const invalidItems = items.filter(item => 
-        !item.item_name || 
-        item.quantity <= 0 || 
-        item.unit_cost <= 0 || 
-        !item.supplier
+        !item.description || 
+        item.requested_amount <= 0
       );
 
       if (invalidItems.length > 0) {
-        showError('Please complete all item fields or remove incomplete items', 'Invalid Items');
+        showError('Please complete all item fields (description and amount) or remove incomplete items', 'Invalid Items');
         return;
       }
     }
@@ -702,101 +687,37 @@ const AddBudgetRequest: React.FC<AddBudgetRequestProps> = ({
 
                         <div className="itemGrid">
                           <div className="itemField">
-                            <label>Item Name<span className='requiredTags'> *</span></label>
+                            <label>Description<span className='requiredTags'> *</span></label>
                             <input
                               type="text"
-                              value={item.item_name}
-                              onChange={(e) => updateItem(index, 'item_name', e.target.value)}
-                              placeholder="Enter item name"
+                              value={item.description || ''}
+                              onChange={(e) => updateItem(index, 'description', e.target.value)}
+                              placeholder="Enter item description"
                               required={showItems}
                             />
                           </div>
 
                           <div className="itemField">
-                            <label>Quantity<span className='requiredTags'> *</span></label>
+                            <label>Requested Amount<span className='requiredTags'> *</span></label>
                             <input
                               type="number"
-                              value={item.quantity}
-                              onChange={(e) => updateItem(index, 'quantity', parseInt(e.target.value) || 0)}
-                              min="1"
-                              required={showItems}
-                            />
-                          </div>
-
-                          <div className="itemField">
-                            <label>Unit</label>
-                            <select
-                              value={item.unit_measure}
-                              onChange={(e) => updateItem(index, 'unit_measure', e.target.value)}
-                            >
-                              <option value="pcs">pcs</option>
-                              <option value="kg">kg</option>
-                              <option value="lbs">lbs</option>
-                              <option value="liters">liters</option>
-                              <option value="meters">meters</option>
-                              <option value="boxes">boxes</option>
-                              <option value="sets">sets</option>
-                              <option value="hours">hours</option>
-                              <option value="days">days</option>
-                            </select>
-                          </div>
-
-                          <div className="itemField">
-                            <label>Unit Cost<span className='requiredTags'> *</span></label>
-                            <input
-                              type="number"
-                              value={item.unit_cost}
-                              onChange={(e) => updateItem(index, 'unit_cost', parseFloat(e.target.value) || 0)}
+                              value={item.requested_amount}
+                              onChange={(e) => updateItem(index, 'requested_amount', parseFloat(e.target.value) || 0)}
                               min="0"
                               step="0.01"
                               required={showItems}
+                              placeholder="0.00"
                             />
                           </div>
 
                           <div className="itemField">
-                            <label>Supplier<span className='requiredTags'> *</span></label>
+                            <label>Notes</label>
                             <input
                               type="text"
-                              value={item.supplier}
-                              onChange={(e) => updateItem(index, 'supplier', e.target.value)}
-                              placeholder="Enter supplier name"
-                              required={showItems}
+                              value={item.notes || ''}
+                              onChange={(e) => updateItem(index, 'notes', e.target.value)}
+                              placeholder="Additional notes (optional)"
                             />
-                          </div>
-
-                          <div className="itemField">
-                            <label>Item Priority</label>
-                            <select
-                              value={item.itemPriority || ''}
-                              onChange={(e) => updateItem(index, 'itemPriority', e.target.value)}
-                            >
-                              <option value="">Select Priority</option>
-                              <option value="must_have">Must Have</option>
-                              <option value="should_have">Should Have</option>
-                              <option value="nice_to_have">Nice to Have</option>
-                            </select>
-                          </div>
-
-                          <div className="itemField">
-                            <label>Essential</label>
-                            <div className="checkboxField">
-                              <input
-                                type="checkbox"
-                                checked={item.isEssential || false}
-                                onChange={(e) => updateItem(index, 'isEssential', e.target.checked)}
-                              />
-                              <span>Mark as essential</span>
-                            </div>
-                          </div>
-
-                          <div className="itemField">
-                            <label>Subtotal</label>
-                            <div className="subtotalField">
-                              ₱{item.subtotal.toLocaleString(undefined, { 
-                                minimumFractionDigits: 2, 
-                                maximumFractionDigits: 2 
-                              })}
-                            </div>
                           </div>
                         </div>
                       </div>

@@ -1,70 +1,70 @@
 // app/services/budgetRequest.service.ts
-// Budget Request API service layer
+// Budget Request API service layer - Updated to match backend schema
 
 import apiService, { ApiResponse } from './api.service';
 
+export interface BudgetRequestItem {
+  id?: number;
+  budget_request_id?: number;
+  category_id?: number;
+  description?: string;
+  requested_amount: number;
+  notes?: string;
+  pr_item_id?: number;
+}
+
 export interface BudgetRequest {
   id: number;
-  requestCode?: string;
-  purpose: string;
-  justification: string;
-  amountRequested: number;
-  status: 'DRAFT' | 'SUBMITTED' | 'APPROVED' | 'REJECTED' | 'CANCELLED';
-  category: string;
-  priority?: string;
-  urgencyReason?: string;
-  createdBy: number;
-  createdByName: string;
-  department: string;
-  fiscalYear: number;
-  fiscalPeriod: string;
-  reservedAmount?: number;
-  bufferPercentage?: number;
-  reviewedBy?: number;
-  reviewedByName?: string;
-  reviewNotes?: string;
-  createdAt: string;
-  updatedAt?: string;
-  approvedAt?: string;
-  rejectedAt?: string;
-  cancelledAt?: string;
+  request_code: string;
+  department_id: string;
+  department_name?: string;
+  requested_by: string;
+  requested_for?: string;
+  request_date: string;
+  total_amount: number;
+  status: 'PENDING' | 'APPROVED' | 'REJECTED' | 'ADJUSTED' | 'CLOSED';
+  purpose?: string;
+  remarks?: string;
+  request_type: 'REGULAR' | 'PROJECT_BASED' | 'URGENT' | 'EMERGENCY';
+  pr_reference_code?: string;
+  approved_by?: string;
+  approved_at?: string;
+  rejected_by?: string;
+  rejected_at?: string;
+  rejection_reason?: string;
+  items?: BudgetRequestItem[];
+  created_at: string;
+  updated_at?: string;
+  is_deleted: boolean;
 }
 
 export interface CreateBudgetRequestDto {
-  purpose: string;
-  justification: string;
-  amountRequested: number;
-  category: string;
-  priority?: string;
-  urgencyReason?: string;
-  fiscalYear: number;
-  fiscalPeriod: string;
-  department: string;
-  createdByName: string;
-  createdByRole: string;
-  status: 'DRAFT' | 'SUBMITTED';
-  start_date?: string;
-  end_date?: string;
-  items?: any[];
-  supporting_documents?: File[];
+  department_id: string;
+  department_name?: string;
+  requested_by: string;
+  requested_for?: string;
+  total_amount: number;
+  purpose?: string;
+  remarks?: string;
+  request_type?: 'REGULAR' | 'PROJECT_BASED' | 'URGENT' | 'EMERGENCY';
+  pr_reference_code?: string;
+  items?: BudgetRequestItem[];
 }
 
 export interface UpdateBudgetRequestDto {
   purpose?: string;
-  justification?: string;
-  amountRequested?: number;
-  category?: string;
-  fiscalPeriod?: string;
+  remarks?: string;
+  total_amount?: number;
+  request_type?: 'REGULAR' | 'PROJECT_BASED' | 'URGENT' | 'EMERGENCY';
+  items?: BudgetRequestItem[];
 }
 
 export interface ApprovalDto {
-  reservedAmount?: number;
-  bufferPercentage?: number;
-  reviewNotes?: string;
+  rejection_reason?: string; // Used for approval notes
 }
 
 export interface RejectionDto {
-  reviewNotes: string;
+  rejection_reason: string;
 }
 
 export interface ListParams {
@@ -129,11 +129,7 @@ class BudgetRequestService {
    */
   async create(data: CreateBudgetRequestDto): Promise<ApiResponse<BudgetRequest>> {
     const endpoint = this.getBaseEndpoint();
-    
-    // Remove files for now (would need multipart/form-data handling)
-    const { supporting_documents, ...requestData } = data;
-    
-    return apiService.post<BudgetRequest>(endpoint, requestData);
+    return apiService.post<BudgetRequest>(endpoint, data);
   }
 
   /**
@@ -153,11 +149,12 @@ class BudgetRequestService {
   }
 
   /**
-   * Submit budget request for approval (DRAFT → SUBMITTED)
+   * Submit budget request (updates status to PENDING)
+   * In the new schema, requests are created with PENDING status by default
    */
   async submit(id: number): Promise<ApiResponse<BudgetRequest>> {
     const endpoint = this.getBaseEndpoint();
-    return apiService.post<BudgetRequest>(`${endpoint}/${id}/submit`);
+    return apiService.patch<BudgetRequest>(`${endpoint}/${id}/status`, { status: 'PENDING' });
   }
 
   /**

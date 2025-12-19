@@ -13,8 +13,12 @@ router.get('/', async (req: Request, res: Response) => {
     // Check Redis (optional - don't fail if unavailable)
     let redisStatus = 'unavailable';
     try {
-      await redis.ping();
-      redisStatus = 'healthy';
+      if (redis) {
+        await redis.ping();
+        redisStatus = 'healthy';
+      } else {
+        redisStatus = 'disabled (ENABLE_CACHE=false)';
+      }
     } catch (redisError) {
       // Redis is optional - don't fail health check
       redisStatus = 'unavailable (cache fallback active)';

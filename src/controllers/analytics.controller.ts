@@ -29,19 +29,11 @@ export async function getDepartmentSummary(req: Request, res: Response) {
     const summary = await cache.withCache(
       cacheKey,
       async () => {
-        // Build filter
-        const where: Prisma.BudgetRequestWhereInput = {
-          department: department || req.user?.department,
-          isDeleted: false
+        // Build filter (using new schema field names)
+        const where: Prisma.budget_requestWhereInput = {
+          department_id: department || req.user?.department,
+          is_deleted: false
         };
-
-        if (fiscalYear) {
-          where.fiscalYear = parseInt(fiscalYear as string);
-        }
-
-        if (fiscalPeriod) {
-          where.fiscalPeriod = fiscalPeriod as string;
-        }
 
         // Get aggregate statistics
         const [
@@ -50,42 +42,25 @@ export async function getDepartmentSummary(req: Request, res: Response) {
           approvedRequests,
           rejectedRequests,
           totalRequestedAmount,
-          totalApprovedAmount,
-          totalReservedAmount,
-          totalUtilizedAmount
+          totalApprovedAmount
         ] = await Promise.all([
-          prisma.budgetRequest.count({ where }),
-          prisma.budgetRequest.count({ where: { ...where, status: 'PENDING' } }),
-          prisma.budgetRequest.count({ where: { ...where, status: 'APPROVED' } }),
-          prisma.budgetRequest.count({ where: { ...where, status: 'REJECTED' } }),
-          prisma.budgetRequest.aggregate({
+          prisma.budget_request.count({ where }),
+          prisma.budget_request.count({ where: { ...where, status: 'PENDING' } }),
+          prisma.budget_request.count({ where: { ...where, status: 'APPROVED' } }),
+          prisma.budget_request.count({ where: { ...where, status: 'REJECTED' } }),
+          prisma.budget_request.aggregate({
             where,
-            _sum: { amountRequested: true }
+            _sum: { total_amount: true }
           }),
-          prisma.budgetRequest.aggregate({
+          prisma.budget_request.aggregate({
             where: { ...where, status: 'APPROVED' },
-            _sum: { amountRequested: true }
-          }),
-          prisma.budgetRequest.aggregate({
-            where: { ...where, isReserved: true },
-            _sum: { reservedAmount: true }
-          }),
-          prisma.budgetRequest.aggregate({
-            where: { ...where, isFullyUtilized: true },
-            _sum: { actualAmountUtilized: true }
+            _sum: { total_amount: true }
           })
         ]);
 
         // Calculate approval rate
         const approvalRate = totalRequests > 0 
           ? ((approvedRequests / totalRequests) * 100).toFixed(2)
-          : '0.00';
-
-        // Calculate utilization rate (% of reserved budget actually used)
-        const reservedAmountValue = Number(totalReservedAmount._sum.reservedAmount) || 0;
-        const utilizedAmountValue = Number(totalUtilizedAmount._sum.actualAmountUtilized) || 0;
-        const utilizationRate = reservedAmountValue > 0
-          ? ((utilizedAmountValue / reservedAmountValue) * 100).toFixed(2)
           : '0.00';
 
         return {
@@ -99,19 +74,16 @@ export async function getDepartmentSummary(req: Request, res: Response) {
             rejected: rejectedRequests
           },
           amounts: {
-            totalRequested: Number(totalRequestedAmount._sum.amountRequested) || 0,
-            totalApproved: Number(totalApprovedAmount._sum.amountRequested) || 0,
-            totalReserved: Number(totalReservedAmount._sum.reservedAmount) || 0,
-            totalUtilized: Number(totalUtilizedAmount._sum.actualAmountUtilized) || 0
+            totalRequested: Number(totalRequestedAmount._sum.total_amount) || 0,
+            totalApproved: Number(totalApprovedAmount._sum.total_amount) || 0
           },
           metrics: {
             approvalRate: `${approvalRate}%`,
-            utilizationRate: `${utilizationRate}%`,
             averageRequestAmount: totalRequests > 0 
-              ? ((Number(totalRequestedAmount._sum.amountRequested) || 0) / totalRequests).toFixed(2)
+              ? ((Number(totalRequestedAmount._sum.total_amount) || 0) / totalRequests).toFixed(2)
               : '0.00',
             averageApprovalAmount: approvedRequests > 0
-              ? ((Number(totalApprovedAmount._sum.amountRequested) || 0) / approvedRequests).toFixed(2)
+              ? ((Number(totalApprovedAmount._sum.total_amount) || 0) / approvedRequests).toFixed(2)
               : '0.00'
           }
         };
@@ -150,52 +122,50 @@ export async function getSpendingTrends(req: Request, res: Response) {
     const result = await cache.withCache(
       cacheKey,
       async () => {
-        const where: Prisma.BudgetRequestWhereInput = {
-          isDeleted: false,
+        const where: Prisma.budget_requestWhereInput = {
+          is_deleted: false,
           status: 'APPROVED'
         };
 
         if (department) {
-          where.department = department as string;
+          where.department_id = department as string;
         } else if (req.user?.role !== 'SuperAdmin') {
-          where.department = req.user?.department;
+          where.department_id = req.user?.department;
         }
 
         if (startDate) {
-          where.createdAt = {
+          where.created_at = {
             gte: new Date(startDate as string)
           };
         }
 
         if (endDate) {
-          if (where.createdAt && typeof where.createdAt === 'object' && 'gte' in where.createdAt) {
-            where.createdAt = {
-              gte: where.createdAt.gte,
+          if (where.created_at && typeof where.created_at === 'object' && 'gte' in where.created_at) {
+            where.created_at = {
+              gte: where.created_at.gte,
               lte: new Date(endDate as string)
             };
           } else {
-            where.createdAt = {
+            where.created_at = {
               lte: new Date(endDate as string)
             };
           }
         }
 
         // Get requests grouped by period
-        const requests = await prisma.budgetRequest.findMany({
+        const requests = await prisma.budget_request.findMany({
           where,
           select: {
-            createdAt: true,
-            amountRequested: true,
-            reservedAmount: true,
-            actualAmountUtilized: true,
-            department: true
+            created_at: true,
+            total_amount: true,
+            department_id: true
           },
-          orderBy: { createdAt: 'asc' }
+          orderBy: { created_at: 'asc' }
         });
 
         // Group by time period
         const trends = requests.reduce((acc: any[], request) => {
-          const date = new Date(request.createdAt);
+          const date = new Date(request.created_at);
           let period: string;
 
           if (groupBy === 'day') {
@@ -217,16 +187,12 @@ export async function getSpendingTrends(req: Request, res: Response) {
           const existing = acc.find(item => item.period === period);
           if (existing) {
             existing.requestCount++;
-            existing.totalRequested += Number(request.amountRequested);
-            existing.totalReserved += Number(request.reservedAmount || 0);
-            existing.totalUtilized += Number(request.actualAmountUtilized || 0);
+            existing.totalRequested += Number(request.total_amount);
           } else {
             acc.push({
               period,
               requestCount: 1,
-              totalRequested: Number(request.amountRequested),
-              totalReserved: Number(request.reservedAmount || 0),
-              totalUtilized: Number(request.actualAmountUtilized || 0)
+              totalRequested: Number(request.total_amount)
             });
           }
 
@@ -272,30 +238,30 @@ export async function getApprovalMetrics(req: Request, res: Response) {
     const metrics = await cache.withCache(
       cacheKey,
       async () => {
-        const where: Prisma.BudgetRequestWhereInput = {
-          isDeleted: false
+        const where: Prisma.budget_requestWhereInput = {
+          is_deleted: false
         };
 
         if (department) {
-          where.department = department as string;
+          where.department_id = department as string;
         } else if (req.user?.role !== 'SuperAdmin') {
-          where.department = req.user?.department;
+          where.department_id = req.user?.department;
         }
 
         if (startDate) {
-          where.createdAt = {
+          where.created_at = {
             gte: new Date(startDate as string)
           };
         }
 
         if (endDate) {
-          if (where.createdAt && typeof where.createdAt === 'object' && 'gte' in where.createdAt) {
-            where.createdAt = {
-              gte: where.createdAt.gte,
+          if (where.created_at && typeof where.created_at === 'object' && 'gte' in where.created_at) {
+            where.created_at = {
+              gte: where.created_at.gte,
               lte: new Date(endDate as string)
             };
           } else {
-            where.createdAt = {
+            where.created_at = {
               lte: new Date(endDate as string)
             };
           }
@@ -305,34 +271,26 @@ export async function getApprovalMetrics(req: Request, res: Response) {
         const [
           approvedRequests,
           rejectedRequests,
-          pendingRequests,
-          overdueRequests,
-          escalatedRequests
+          pendingRequests
         ] = await Promise.all([
-          prisma.budgetRequest.findMany({
+          prisma.budget_request.findMany({
             where: { ...where, status: 'APPROVED' },
             select: {
-              createdAt: true,
-              approvedAt: true,
-              amountRequested: true
+              created_at: true,
+              approved_at: true,
+              total_amount: true
             }
           }),
-          prisma.budgetRequest.findMany({
+          prisma.budget_request.findMany({
             where: { ...where, status: 'REJECTED' },
             select: {
-              createdAt: true,
-              rejectedAt: true,
-              amountRequested: true
+              created_at: true,
+              rejected_at: true,
+              total_amount: true
             }
           }),
-          prisma.budgetRequest.count({
+          prisma.budget_request.count({
             where: { ...where, status: 'PENDING' }
-          }),
-          prisma.budgetRequest.count({
-            where: { ...where, isOverdue: true }
-          }),
-          prisma.budgetRequest.count({
-            where: { ...where, escalationLevel: { gt: 0 } }
           })
         ]);
 
@@ -341,8 +299,8 @@ export async function getApprovalMetrics(req: Request, res: Response) {
         let approvalTimeCount = 0;
 
         approvedRequests.forEach(req => {
-          if (req.approvedAt) {
-            const timeToApprove = req.approvedAt.getTime() - req.createdAt.getTime();
+          if (req.approved_at) {
+            const timeToApprove = req.approved_at.getTime() - req.created_at.getTime();
             totalApprovalTime += timeToApprove;
             approvalTimeCount++;
           }
@@ -358,8 +316,8 @@ export async function getApprovalMetrics(req: Request, res: Response) {
         let rejectionTimeCount = 0;
 
         rejectedRequests.forEach(req => {
-          if (req.rejectedAt) {
-            const timeToReject = req.rejectedAt.getTime() - req.createdAt.getTime();
+          if (req.rejected_at) {
+            const timeToReject = req.rejected_at.getTime() - req.created_at.getTime();
             totalRejectionTime += timeToReject;
             rejectionTimeCount++;
           }
@@ -372,9 +330,9 @@ export async function getApprovalMetrics(req: Request, res: Response) {
 
         // Calculate approval rate by amount
         const totalApprovedAmount = approvedRequests.reduce((sum, req) => 
-          sum + Number(req.amountRequested), 0);
+          sum + Number(req.total_amount), 0);
         const totalRejectedAmount = rejectedRequests.reduce((sum, req) => 
-          sum + Number(req.amountRequested), 0);
+          sum + Number(req.total_amount), 0);
         const totalAmount = totalApprovedAmount + totalRejectedAmount;
 
         const approvalRateByAmount = totalAmount > 0
@@ -385,9 +343,7 @@ export async function getApprovalMetrics(req: Request, res: Response) {
           counts: {
             approved: approvedRequests.length,
             rejected: rejectedRequests.length,
-            pending: pendingRequests,
-            overdue: overdueRequests,
-            escalated: escalatedRequests
+            pending: pendingRequests
           },
           rates: {
             approvalRate: approvedRequests.length + rejectedRequests.length > 0
@@ -446,21 +402,21 @@ export async function getTopRequesters(req: Request, res: Response) {
     const topRequesters = await cache.withCache(
       cacheKey,
       async () => {
-        const where: Prisma.BudgetRequestWhereInput = {
-          isDeleted: false
+        const where: Prisma.budget_requestWhereInput = {
+          is_deleted: false
         };
 
         if (department) {
-          where.department = department as string;
+          where.department_id = department as string;
         } else if (req.user?.role !== 'SuperAdmin') {
-          where.department = req.user?.department;
+          where.department_id = req.user?.department;
         }
 
-        const requests = await prisma.budgetRequest.groupBy({
-          by: ['requestedBy', 'requestedByName'],
+        const requests = await prisma.budget_request.groupBy({
+          by: ['requested_by'],
           where,
           _count: { id: true },
-          _sum: { amountRequested: true },
+          _sum: { total_amount: true },
           orderBy: {
             _count: { id: 'desc' }
           },
@@ -468,12 +424,11 @@ export async function getTopRequesters(req: Request, res: Response) {
         });
 
         return requests.map(requester => ({
-          userId: requester.requestedBy,
-          userName: requester.requestedByName || 'Unknown',
+          userId: requester.requested_by,
           requestCount: requester._count.id,
-          totalRequested: Number(requester._sum.amountRequested) || 0,
+          totalRequested: Number(requester._sum.total_amount) || 0,
           avgRequestAmount: requester._count.id > 0
-            ? ((Number(requester._sum.amountRequested) || 0) / requester._count.id).toFixed(2)
+            ? ((Number(requester._sum.total_amount) || 0) / requester._count.id).toFixed(2)
             : '0.00'
         }));
       },
@@ -508,33 +463,33 @@ export async function getCategoryBreakdown(req: Request, res: Response) {
     const breakdown = await cache.withCache(
       cacheKey,
       async () => {
-        const where: Prisma.BudgetRequestWhereInput = {
-          isDeleted: false,
+        const where: Prisma.budget_requestWhereInput = {
+          is_deleted: false,
           status: 'APPROVED'
         };
 
         if (department) {
-          where.department = department as string;
+          where.department_id = department as string;
         } else if (req.user?.role !== 'SuperAdmin') {
-          where.department = req.user?.department;
+          where.department_id = req.user?.department;
         }
 
-        const categories = await prisma.budgetRequest.groupBy({
-          by: ['category'],
+        const types = await prisma.budget_request.groupBy({
+          by: ['request_type'],
           where,
           _count: { id: true },
-          _sum: { amountRequested: true },
+          _sum: { total_amount: true },
           orderBy: {
-            _sum: { amountRequested: 'desc' }
+            _sum: { total_amount: 'desc' }
           }
         });
 
-        return categories.map(cat => ({
-          category: cat.category || 'Uncategorized',
-          requestCount: cat._count.id,
-          totalAmount: Number(cat._sum.amountRequested) || 0,
-          avgAmount: cat._count.id > 0
-            ? ((Number(cat._sum.amountRequested) || 0) / cat._count.id).toFixed(2)
+        return types.map(type => ({
+          requestType: type.request_type || 'REGULAR',
+          requestCount: type._count.id,
+          totalAmount: Number(type._sum.total_amount) || 0,
+          avgAmount: type._count.id > 0
+            ? ((Number(type._sum.total_amount) || 0) / type._count.id).toFixed(2)
             : '0.00'
         }));
       },

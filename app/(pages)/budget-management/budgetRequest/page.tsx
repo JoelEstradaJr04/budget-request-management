@@ -23,54 +23,38 @@ import { useAuth } from '../../../contexts/AuthContext';
 
 
 interface BudgetRequestItem {
-  id: number;
-  budgetRequestId: number;
-  itemName: string;
-  itemCode?: string;
-  quantity: number;
-  unitMeasure?: string;
-  unitCost: string | number;
-  totalCost: string | number;
-  supplierId?: number | null;
-  supplierName: string;
-  itemPriority?: string;
-  isEssential?: boolean;
-  status?: string;
-  createdAt?: string;
-  updatedAt?: string;
+  id?: number;
+  budget_request_id?: number;
+  category_id?: number;
+  description?: string;
+  requested_amount: number;
+  notes?: string;
+  pr_item_id?: number;
 }
 
 interface BudgetRequest {
   id: number;
-  requestCode?: string;
-  purpose: string;
-  justification: string;
-  amountRequested: number;
-  status: 'DRAFT' | 'SUBMITTED' | 'APPROVED' | 'REJECTED' | 'CANCELLED';
-  category: string;
-  priority?: 'low' | 'medium' | 'high' | 'urgent';
-  urgencyReason?: string;
-  createdBy: number;
-  createdByName: string;
-  createdByEmail?: string;
-  department: string;
-  requestType?: string;
-  fiscalYear: number;
-  fiscalPeriod: string;
-  reservedAmount?: number;
-  bufferPercentage?: number;
-  reviewedBy?: number;
-  reviewedByName?: string;
-  reviewNotes?: string;
-  createdAt: string;
-  updatedAt?: string;
-  start_date?: string;
-  end_date?: string;
-  itemBreakdown?: string;
-  supplierBreakdown?: string;
-  itemAllocations?: BudgetRequestItem[];
-  totalItemsRequested?: number;
-  totalSuppliersInvolved?: number;
+  request_code: string;
+  department_id: string;
+  department_name?: string;
+  requested_by: string;
+  requested_for?: string;
+  request_date: string;
+  total_amount: number;
+  status: 'PENDING' | 'APPROVED' | 'REJECTED' | 'ADJUSTED' | 'CLOSED';
+  purpose?: string;
+  remarks?: string;
+  request_type: 'REGULAR' | 'PROJECT_BASED' | 'URGENT' | 'EMERGENCY';
+  pr_reference_code?: string;
+  approved_by?: string;
+  approved_at?: string;
+  rejected_by?: string;
+  rejected_at?: string;
+  rejection_reason?: string;
+  items?: BudgetRequestItem[];
+  created_at: string;
+  updated_at?: string;
+  is_deleted: boolean;
 }
 
 const BudgetRequestPage = () => {
@@ -98,7 +82,7 @@ const BudgetRequestPage = () => {
     'Infrastructure',
     'Other'
   ]);
-  const [sortField, setSortField] = useState<keyof BudgetRequest>('createdAt');
+  const [sortField, setSortField] = useState<keyof BudgetRequest>('created_at');
   const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('desc');
 
   const filterSections: FilterSection[] = [
@@ -113,11 +97,11 @@ const BudgetRequestPage = () => {
       title: 'Status',
       type: 'checkbox',
       options: [
-        { id: 'DRAFT', label: 'Draft' },
-        { id: 'SUBMITTED', label: 'Submitted' },
+        { id: 'PENDING', label: 'Pending' },
         { id: 'APPROVED', label: 'Approved' },
         { id: 'REJECTED', label: 'Rejected' },
-        { id: 'CANCELLED', label: 'Cancelled' }
+        { id: 'ADJUSTED', label: 'Adjusted' },
+        { id: 'CLOSED', label: 'Closed' }
       ]
     },
     {
@@ -198,26 +182,22 @@ const BudgetRequestPage = () => {
     const searchLower = search.toLowerCase();
 
     const matchesSearch = search === '' || 
-      item.purpose.toLowerCase().includes(searchLower) ||
-      item.justification.toLowerCase().includes(searchLower) ||
-      item.category.toLowerCase().includes(searchLower) ||
+      (item.purpose && item.purpose.toLowerCase().includes(searchLower)) ||
+      (item.remarks && item.remarks.toLowerCase().includes(searchLower)) ||
       item.status.toLowerCase().includes(searchLower) ||
-      item.createdByName.toLowerCase().includes(searchLower) ||
-      item.department.toLowerCase().includes(searchLower) ||
-      item.amountRequested.toString().includes(searchLower) ||
-      (item.requestCode && item.requestCode.toLowerCase().includes(searchLower));
+      item.requested_by.toLowerCase().includes(searchLower) ||
+      (item.department_name && item.department_name.toLowerCase().includes(searchLower)) ||
+      item.total_amount.toString().includes(searchLower) ||
+      item.request_code.toLowerCase().includes(searchLower);
 
     const matchesStatus = statusFilter ? 
       statusFilter.split(',').some(status => item.status === status.trim()) : true;
 
-    const matchesCategory = categoryFilter ? 
-      categoryFilter.split(',').some(cat => item.category === cat.trim()) : true;
-
-    const itemDate = new Date(item.createdAt).toISOString().split('T')[0];
+    const itemDate = new Date(item.created_at).toISOString().split('T')[0];
     const matchesDate = (!dateFrom || itemDate >= dateFrom) && 
       (!dateTo || itemDate <= dateTo);
 
-    return matchesSearch && matchesStatus && matchesCategory && matchesDate;
+    return matchesSearch && matchesStatus && matchesDate;
   }).sort((a, b) => {
     const aValue = a[sortField];
     const bValue = b[sortField];
@@ -242,22 +222,22 @@ const BudgetRequestPage = () => {
   const StatusBadge = ({ status }: { status: string }) => {
     const getStatusClass = (status: string) => {
       switch (status) {
-        case 'DRAFT': return 'Draft';
-        case 'SUBMITTED': return 'pending-approval';
+        case 'PENDING': return 'pending-approval';
         case 'APPROVED': return 'Approved';
         case 'REJECTED': return 'Rejected';
-        case 'CANCELLED': return 'Closed';
-        default: return 'Draft';
+        case 'ADJUSTED': return 'Draft'; // Use Draft style for Adjusted
+        case 'CLOSED': return 'Closed';
+        default: return 'pending-approval';
       }
     };
 
     const getStatusLabel = (status: string) => {
       switch (status) {
-        case 'DRAFT': return 'Draft';
-        case 'SUBMITTED': return 'Submitted';
+        case 'PENDING': return 'Pending';
         case 'APPROVED': return 'Approved';
         case 'REJECTED': return 'Rejected';
-        case 'CANCELLED': return 'Cancelled';
+        case 'ADJUSTED': return 'Adjusted';
+        case 'CLOSED': return 'Closed';
         default: return status;
       }
     };
@@ -286,7 +266,8 @@ const BudgetRequestPage = () => {
     );
 
     switch (item.status) {
-      case 'DRAFT':
+      case 'PENDING':
+        // Pending requests can be edited or deleted before approval
         buttons.push(
           <button 
             key="edit"
@@ -303,19 +284,8 @@ const BudgetRequestPage = () => {
             title="Delete Request"
           >
             <i className="ri-delete-bin-line" />
-          </button>,
-          <button 
-            key="submit"
-            className="submitBtn" 
-            onClick={() => handleSubmit(item.id)}
-            title="Submit for Approval"
-          >
-            <i className="ri-send-plane-line" />
           </button>
         );
-        break;
-      
-      case 'SUBMITTED':
         break;
       
       case 'REJECTED':
@@ -332,7 +302,8 @@ const BudgetRequestPage = () => {
         break;
         
       case 'APPROVED':
-      case 'CANCELLED':
+      case 'ADJUSTED':
+      case 'CLOSED':
         buttons.push(
           <button 
             key="export"
@@ -357,7 +328,7 @@ const BudgetRequestPage = () => {
     return buttons;
   };
 
-  // Add Budget Request
+  // Add Budget Request - Updated to match new schema
   const handleAddBudgetRequest = async (newRequest: any) => {
     setLoading(true);
     try {
@@ -365,22 +336,18 @@ const BudgetRequestPage = () => {
       console.log('Items from newRequest:', newRequest.items);
       
       const createDto: CreateBudgetRequestDto = {
+        department_id: user?.department || 'operations',
+        department_name: user?.department || 'Operations',
+        requested_by: user?.username || 'Unknown User',
+        requested_for: newRequest.requested_for,
+        total_amount: newRequest.amountRequested || newRequest.total_amount || 0,
         purpose: newRequest.purpose,
-        justification: newRequest.justification,
-        amountRequested: newRequest.amountRequested,
-        category: newRequest.category || 'Operations',
-        priority: newRequest.priority || undefined,
-        urgencyReason: newRequest.urgencyReason || undefined,
-        fiscalYear: newRequest.fiscalYear || 2025,
-        fiscalPeriod: newRequest.fiscalPeriod || 'Q1',
-        department: user?.department || 'operations',
-        createdByName: user?.username || 'Unknown User',
-        createdByRole: user?.role || 'Staff',
-        status: newRequest.status as 'DRAFT' | 'SUBMITTED',
-        start_date: newRequest.start_date,
-        end_date: newRequest.end_date,
-        items: newRequest.items,
-        supporting_documents: newRequest.supporting_documents
+        remarks: newRequest.justification || newRequest.remarks,
+        request_type: (newRequest.priority === 'urgent' ? 'URGENT' : 
+                      newRequest.priority === 'high' ? 'PROJECT_BASED' : 
+                      'REGULAR') as 'REGULAR' | 'PROJECT_BASED' | 'URGENT' | 'EMERGENCY',
+        pr_reference_code: newRequest.pr_reference_code,
+        items: newRequest.items
       };
       
       console.log('CreateDTO being sent:', createDto);
@@ -594,7 +561,7 @@ const BudgetRequestPage = () => {
 
   const handleExportSingle = (item: BudgetRequest) => {
     console.log('Export single:', item);
-    showSuccess(`Exporting request ${item.requestCode || item.id}...`, 'Export Started');
+    showSuccess(`Exporting request ${item.request_code}...`, 'Export Started');
     // Implement single request export
   };
 
@@ -693,9 +660,9 @@ const BudgetRequestPage = () => {
             <table className="data-table">
               <thead>
                 <tr>
-                  <th onClick={() => handleSort('createdAt')} className="sortable">
+                  <th onClick={() => handleSort('created_at')} className="sortable">
                     Request Date
-                    {sortField === 'createdAt' && (
+                    {sortField === 'created_at' && (
                       <i className={`ri-arrow-${sortOrder === 'asc' ? 'up' : 'down'}-line`} />
                     )}
                   </th>
@@ -705,21 +672,15 @@ const BudgetRequestPage = () => {
                       <i className={`ri-arrow-${sortOrder === 'asc' ? 'up' : 'down'}-line`} />
                     )}
                   </th>
-                  <th onClick={() => handleSort('category')} className="sortable">
-                    Category
-                    {sortField === 'category' && (
+                  <th onClick={() => handleSort('request_type')} className="sortable">
+                    Type
+                    {sortField === 'request_type' && (
                       <i className={`ri-arrow-${sortOrder === 'asc' ? 'up' : 'down'}-line`} />
                     )}
                   </th>
-                  <th onClick={() => handleSort('priority')} className="sortable">
-                    Priority
-                    {sortField === 'priority' && (
-                      <i className={`ri-arrow-${sortOrder === 'asc' ? 'up' : 'down'}-line`} />
-                    )}
-                  </th>
-                  <th onClick={() => handleSort('amountRequested')} className="sortable">
+                  <th onClick={() => handleSort('total_amount')} className="sortable">
                     Amount
-                    {sortField === 'amountRequested' && (
+                    {sortField === 'total_amount' && (
                       <i className={`ri-arrow-${sortOrder === 'asc' ? 'up' : 'down'}-line`} />
                     )}
                   </th>
@@ -729,9 +690,9 @@ const BudgetRequestPage = () => {
                       <i className={`ri-arrow-${sortOrder === 'asc' ? 'up' : 'down'}-line`} />
                     )}
                   </th>
-                  <th onClick={() => handleSort('createdByName')} className="sortable">
+                  <th onClick={() => handleSort('requested_by')} className="sortable">
                     Requested By
-                    {sortField === 'createdByName' && (
+                    {sortField === 'requested_by' && (
                       <i className={`ri-arrow-${sortOrder === 'asc' ? 'up' : 'down'}-line`} />
                     )}
                   </th>
@@ -750,41 +711,38 @@ const BudgetRequestPage = () => {
                     }}
                     style={{ cursor: 'pointer' }}
                   >
-                    <td>{formatDate(item.createdAt)}</td>
+                    <td>{formatDate(item.created_at)}</td>
                     <td>
                       <div className="request-title">
-                        <strong title={item.purpose.length > 30 ? item.purpose : undefined}>
-                            {item.purpose}
+                        <strong title={(item.purpose && item.purpose.length > 30) ? item.purpose : undefined}>
+                            {item.purpose || 'No purpose specified'}
                         </strong>
                         <div 
                             className="request-description" 
-                            title={item.justification.length > 60 ? item.justification : undefined}
+                            title={(item.remarks && item.remarks.length > 60) ? item.remarks : undefined}
                         >
-                            {item.justification.length > 60 
-                            ? `${item.justification.substring(0, 60)}...` 
-                            : item.justification
+                            {item.remarks 
+                              ? (item.remarks.length > 60 
+                                ? `${item.remarks.substring(0, 60)}...` 
+                                : item.remarks)
+                              : 'No remarks'
                             }
                         </div>
                       </div>
                     </td>
-                    <td>{item.category}</td>
                     <td>
-                      {item.priority ? (
-                        <span className={`priority-badge priority-${item.priority?.toLowerCase()}`}>
-                          {item.priority}
-                        </span>
-                      ) : (
-                        <span className="priority-badge priority-none">N/A</span>
-                      )}
+                      <span className={`priority-badge priority-${item.request_type?.toLowerCase()}`}>
+                        {item.request_type}
+                      </span>
                     </td>
                     <td className="amount-cell">
-                      ₱{item.amountRequested.toLocaleString(undefined, { 
+                      ₱{Number(item.total_amount).toLocaleString(undefined, { 
                         minimumFractionDigits: 2, 
                         maximumFractionDigits: 2 
                       })}
                     </td>
                     <td><StatusBadge status={item.status} /></td>
-                    <td>{item.createdByName}</td>
+                    <td>{item.requested_by}</td>
                     <td className="actionButtons">
                       <div className="actionButtonsContainer">
                         {getActionButtons(item)}
@@ -818,8 +776,8 @@ const BudgetRequestPage = () => {
 
         {showAuditModal && selectedRequestForAudit && (
             <AuditTrailBudgetRequest
-                requestId={selectedRequestForAudit.requestCode || `REQ-${selectedRequestForAudit.id}`}
-                requestTitle={selectedRequestForAudit.purpose}
+                requestId={selectedRequestForAudit.request_code}
+                requestTitle={selectedRequestForAudit.purpose || 'Budget Request'}
                 onClose={() => {
                 setShowAuditModal(false);
                 setSelectedRequestForAudit(null);

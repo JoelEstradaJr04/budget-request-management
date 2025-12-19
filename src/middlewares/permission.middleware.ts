@@ -31,40 +31,40 @@ export const checkPermission = (requiredPermission: Permission) => {
 
       // Check department-specific permissions
       if (scope === 'department' && id) {
-        const request = await prisma.budgetRequest.findUnique({
+        const request = await prisma.budget_request.findUnique({
           where: { id: parseInt(id) },
-          select: { department: true, isDeleted: true }
+          select: { department_id: true, is_deleted: true }
         });
 
-        if (!request || request.isDeleted) {
+        if (!request || request.is_deleted) {
           return notFoundResponse(res, 'Budget request');
         }
 
         // Non-Finance users can only access own department
-        if (request.department !== user.department) {
+        if (request.department_id !== user.department) {
           return forbiddenResponse(res, 'Access denied: Department mismatch');
         }
       }
 
       // Check ownership for 'own' scope
       if (scope === 'own' && id) {
-        const request = await prisma.budgetRequest.findUnique({
+        const request = await prisma.budget_request.findUnique({
           where: { id: parseInt(id) },
-          select: { createdBy: true, department: true, status: true, isDeleted: true }
+          select: { requested_by: true, department_id: true, status: true, is_deleted: true }
         });
 
-        if (!request || request.isDeleted) {
+        if (!request || request.is_deleted) {
           return notFoundResponse(res, 'Budget request');
         }
 
         // Must be creator
-        if (request.createdBy !== user.id) {
+        if (request.requested_by !== user.id) {
           return forbiddenResponse(res, 'Access denied: Not the creator');
         }
 
-        // For edit/delete, must be DRAFT status
-        if (['edit', 'delete'].includes(action) && request.status !== 'DRAFT') {
-          return forbiddenResponse(res, 'Can only edit/delete draft requests');
+        // For edit/delete, must be PENDING status (schema doesn't have DRAFT)
+        if (['edit', 'delete'].includes(action) && request.status !== 'PENDING') {
+          return forbiddenResponse(res, 'Can only edit/delete pending requests');
         }
       }
 
@@ -74,32 +74,32 @@ export const checkPermission = (requiredPermission: Permission) => {
       }
 
       if (['edit', 'delete'].includes(action) && id) {
-        const request = await prisma.budgetRequest.findUnique({
+        const request = await prisma.budget_request.findUnique({
           where: { id: parseInt(id) },
-          select: { status: true, createdBy: true, department: true, isDeleted: true }
+          select: { status: true, requested_by: true, department_id: true, is_deleted: true }
         });
 
-        if (!request || request.isDeleted) {
+        if (!request || request.is_deleted) {
           return notFoundResponse(res, 'Budget request');
         }
 
-        // Can only edit/delete DRAFT status
-        if (request.status !== 'DRAFT') {
-          return forbiddenResponse(res, 'Can only edit/delete draft requests');
+        // Can only edit/delete PENDING status
+        if (request.status !== 'PENDING') {
+          return forbiddenResponse(res, 'Can only edit/delete pending requests');
         }
 
-        // Finance Admin can edit/delete any department's drafts
+        // Finance Admin can edit/delete any department's pending requests
         if (user.department === 'finance' && user.role.toLowerCase().includes('admin')) {
           return next();
         }
 
-        // Department Admin can edit/delete own department's drafts
-        if (user.role.toLowerCase().includes('admin') && request.department === user.department) {
+        // Department Admin can edit/delete own department's pending requests
+        if (user.role.toLowerCase().includes('admin') && request.department_id === user.department) {
           return next();
         }
 
-        // Non-Admin can only edit/delete own drafts
-        if (!user.role.toLowerCase().includes('admin') && request.createdBy !== user.id) {
+        // Non-Admin can only edit/delete own pending requests
+        if (!user.role.toLowerCase().includes('admin') && request.requested_by !== user.id) {
           return forbiddenResponse(res, 'Can only edit/delete own requests');
         }
       }
@@ -124,7 +124,7 @@ export function applyAccessFilter(filter: any, user: any): any {
   // Other departments can only see own department
   return {
     ...filter,
-    department: user.department
+    department_id: user.department
   };
 }
 

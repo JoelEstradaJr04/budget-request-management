@@ -4,6 +4,11 @@ import redis from '../config/redis';
 
 export const cacheResponse = (ttl: number = 300) => {
   return async (req: Request, res: Response, next: NextFunction) => {
+    // Skip if Redis is disabled
+    if (!redis) {
+      return next();
+    }
+
     // Only cache GET requests
     if (req.method !== 'GET') {
       return next();

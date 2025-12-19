@@ -15,130 +15,45 @@ const transporter = nodemailer.createTransport({
 
 class NotificationService {
   async notifyAdminsNewRequest(budgetRequest: any) {
-    const subject = `New Budget Request: ${budgetRequest.requestCode}`;
-    const message = `
-      A new budget request has been submitted and requires your review.
-      
-      Request Code: ${budgetRequest.requestCode}
-      Department: ${budgetRequest.department}
-      Amount: $${Number(budgetRequest.amountRequested).toLocaleString()}
-      Purpose: ${budgetRequest.purpose}
-      
-      Please review at: ${FRONTEND_URL}/budget-requests/${budgetRequest.id}
-    `;
+    const subject = `New Budget Request: ${budgetRequest.request_code || budgetRequest.requestCode}`;
+    const message = `A new budget request has been submitted. Request Code: ${budgetRequest.request_code || budgetRequest.requestCode}. Please review.`;
 
-    // Get department admins
-    const admins = await this.getDepartmentAdmins(budgetRequest.department);
+    // Get department admins (by department_id)
+    const admins = await this.getDepartmentAdmins(budgetRequest.department_id || budgetRequest.department);
 
-    // Send notifications
+    // Send emails to admins (no DB notifications table in schema)
     await Promise.all(
-      admins.map(admin =>
-        this.sendNotification(budgetRequest.id, {
-          recipientUserId: admin.id,
-          recipientEmail: admin.email,
-          recipientName: admin.name,
-          subject,
-          message,
-          notificationType: 'REQUEST_SUBMITTED'
-        })
-      )
+      admins.map(admin => this.sendEmail(admin.email, subject, message))
     );
   }
 
   async notifyRequestApproved(budgetRequest: any) {
-    const subject = `Budget Request Approved: ${budgetRequest.requestCode}`;
-    const message = `
-      Your budget request has been approved!
-      
-      Request Code: ${budgetRequest.requestCode}
-      Amount Approved: $${Number(budgetRequest.reservedAmount).toLocaleString()}
-      
-      View details at: ${FRONTEND_URL}/budget-requests/${budgetRequest.id}
-    `;
+    const subject = `Budget Request Approved: ${budgetRequest.request_code || budgetRequest.requestCode}`;
+    const message = `Your budget request has been approved. Request Code: ${budgetRequest.request_code || budgetRequest.requestCode}`;
 
-    await this.sendNotification(budgetRequest.id, {
-      recipientUserId: budgetRequest.requestedBy,
-      recipientEmail: budgetRequest.requestedByEmail || '',
-      recipientName: budgetRequest.requestedByName || '',
-      subject,
-      message,
-      notificationType: 'REQUEST_APPROVED'
-    });
+    // Send to requester if email present
+    const recipientEmail = budgetRequest.requested_for_email || budgetRequest.requestedByEmail || '';
+    if (recipientEmail) await this.sendEmail(recipientEmail, subject, message);
   }
 
   async notifyRequestRejected(budgetRequest: any) {
-    const subject = `Budget Request Rejected: ${budgetRequest.requestCode}`;
-    const message = `
-      Your budget request has been rejected.
-      
-      Request Code: ${budgetRequest.requestCode}
-      Reason: ${budgetRequest.reviewNotes}
-      
-      View details at: ${FRONTEND_URL}/budget-requests/${budgetRequest.id}
-    `;
+    const subject = `Budget Request Rejected: ${budgetRequest.request_code || budgetRequest.requestCode}`;
+    const message = `Your budget request has been rejected. Request Code: ${budgetRequest.request_code || budgetRequest.requestCode}. Reason: ${budgetRequest.rejection_reason || ''}`;
 
-    await this.sendNotification(budgetRequest.id, {
-      recipientUserId: budgetRequest.requestedBy,
-      recipientEmail: budgetRequest.requestedByEmail || '',
-      recipientName: budgetRequest.requestedByName || '',
-      subject,
-      message,
-      notificationType: 'REQUEST_REJECTED'
-    });
+    const recipientEmail = budgetRequest.requested_for_email || budgetRequest.requestedByEmail || '';
+    if (recipientEmail) await this.sendEmail(recipientEmail, subject, message);
   }
 
-  private async sendNotification(budgetRequestId: number, data: any) {
+  private async sendEmail(to: string, subject: string, text: string) {
     try {
-      // Create notification record
-      const notification = await prisma.budgetRequestNotification.create({
-        data: {
-          budgetRequestId,
-          notificationType: data.notificationType,
-          recipientUserId: data.recipientUserId,
-          recipientEmail: data.recipientEmail,
-          recipientName: data.recipientName,
-          subject: data.subject,
-          message: data.message,
-          deliveryStatus: 'pending'
-        }
-      });
-
-      // Send email if configured
-      if (SMTP_CONFIG.USER && data.recipientEmail) {
-        await transporter.sendMail({
-          from: SMTP_CONFIG.USER,
-          to: data.recipientEmail,
-          subject: data.subject,
-          text: data.message
-        });
-
-        // Update notification status
-        await prisma.budgetRequestNotification.update({
-          where: { id: notification.id },
-          data: {
-            deliveryStatus: 'sent',
-            sentAt: new Date()
-          }
-        });
+      if (SMTP_CONFIG.USER && to) {
+        await transporter.sendMail({ from: SMTP_CONFIG.USER, to, subject, text });
+      } else {
+        // If mail not configured, just log
+        console.info('Email not sent (SMTP not configured).', { to, subject });
       }
-    } catch (error: any) {
-      console.error('Notification send failed:', error.message);
-      
-      // Update notification status to failed
-      try {
-        await prisma.budgetRequestNotification.updateMany({
-          where: {
-            budgetRequestId,
-            deliveryStatus: 'pending'
-          },
-          data: {
-            deliveryStatus: 'failed',
-            deliveryError: error.message
-          }
-        });
-      } catch (updateError) {
-        console.error('Failed to update notification status:', updateError);
-      }
+    } catch (err: any) {
+      console.error('Failed to send notification email:', err.message);
     }
   }
 

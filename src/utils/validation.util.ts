@@ -2,57 +2,68 @@
 import Joi from 'joi';
 
 export const budgetRequestSchema = Joi.object({
+  // Accept both formats for backwards compatibility
   department: Joi.string()
     .valid('finance', 'hr', 'inventory', 'operations')
-    .required(),
+    .optional(),
   
+  department_id: Joi.string()
+    .valid('finance', 'hr', 'inventory', 'operations')
+    .optional(),
+  
+  department_name: Joi.string().optional(),
+  
+  // Accept both formats
   amountRequested: Joi.number()
     .positive()
     .max(10000000)
-    .required(),
+    .optional(),
+  
+  total_amount: Joi.number()
+    .positive()
+    .max(10000000)
+    .optional(),
   
   purpose: Joi.string()
     .min(10)
     .max(500)
-    .required(),
+    .optional(),
   
-  justification: Joi.string()
+  remarks: Joi.string()
     .max(5000)
     .optional(),
   
-  category: Joi.string()
-    .valid('operational', 'capital', 'administrative', 'emergency')
+  request_type: Joi.string()
+    .valid('REGULAR', 'PROJECT_BASED', 'URGENT', 'EMERGENCY')
     .optional(),
   
-  priority: Joi.string()
-    .valid('low', 'medium', 'high', 'urgent')
+  requestType: Joi.string()
+    .valid('REGULAR', 'PROJECT_BASED', 'URGENT', 'EMERGENCY')
     .optional(),
   
-  urgencyReason: Joi.string()
-    .max(1000)
+  status: Joi.string()
+    .valid('PENDING', 'APPROVED', 'REJECTED', 'ADJUSTED', 'CLOSED')
     .optional(),
-
-  fiscalYear: Joi.number().optional(),
-  fiscalPeriod: Joi.string().optional(),
-  createdByName: Joi.string().optional(),
-  createdByRole: Joi.string().optional(),
-  createdByEmail: Joi.string().email().optional(),
-  status: Joi.string().valid('DRAFT', 'SUBMITTED').optional(),
-  start_date: Joi.string().optional(),
-  end_date: Joi.string().optional(),
   
-  linkedPurchaseRequestId: Joi.number().optional(),
+  requested_for: Joi.string().optional(),
+  
+  pr_reference_code: Joi.string().optional(),
   linkedPurchaseRequestRefNo: Joi.string().optional(),
   
   items: Joi.array()
     .items(
       Joi.object({
-        // Accept both naming conventions
+        // New schema fields
+        category_id: Joi.number().optional(),
+        description: Joi.string().optional(),
+        requested_amount: Joi.number().min(0).optional(),
+        notes: Joi.string().optional(),
+        pr_item_id: Joi.number().optional(),
+        
+        // Old naming conventions for backward compatibility
         itemName: Joi.string().optional(),
         item_name: Joi.string().optional(),
-        itemCode: Joi.string().optional(),
-        item_code: Joi.string().optional(),
-        quantity: Joi.number().positive().required(),
+        quantity: Joi.number().positive().optional(),
         unitCost: Joi.number().min(0).optional(),
         unit_cost: Joi.number().min(0).optional(),
         totalCost: Joi.number().min(0).optional(),
@@ -61,32 +72,25 @@ export const budgetRequestSchema = Joi.object({
         supplier_id: Joi.string().optional(),
         supplierName: Joi.string().optional(),
         supplier: Joi.string().optional(),
-        unit_measure: Joi.string().optional(),
-        itemPriority: Joi.string().valid('must_have', 'should_have', 'nice_to_have').optional(),
-        isEssential: Joi.boolean().optional()
+        unit_measure: Joi.string().optional()
       })
-      // At least one name field is required
-      .or('itemName', 'item_name')
-      // At least one cost field is required
-      .or('unitCost', 'unit_cost')
-      // At least one total field is required
-      .or('totalCost', 'subtotal')
     )
     .optional(),
   
-  supporting_documents: Joi.array().optional()
-}).unknown(true); // Allow additional fields
+  supporting_documents: Joi.array().optional(),
+  attachments: Joi.array().optional()
+}).unknown(true).or('department', 'department_id').or('amountRequested', 'total_amount'); // Allow additional fields and require at least one key field
 
 export function validateBudgetRequest(data: any) {
   return budgetRequestSchema.validate(data, { abortEarly: false });
 }
 
 export const approvalSchema = Joi.object({
-  reviewNotes: Joi.string().min(10).max(2000).required(),
-  reservedAmount: Joi.number().positive().optional(),
-  bufferPercentage: Joi.number().min(0).max(50).optional()
+  remarks: Joi.string().min(10).max(2000).optional(),
+  reviewNotes: Joi.string().min(10).max(2000).optional() // backward compatibility
 });
 
 export const rejectionSchema = Joi.object({
-  reviewNotes: Joi.string().min(10).max(2000).required()
+  rejection_reason: Joi.string().min(10).max(2000).required(),
+  reviewNotes: Joi.string().min(10).max(2000).optional() // backward compatibility
 });

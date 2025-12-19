@@ -1,87 +1,50 @@
 // src/types/budgetRequest.types.ts
 // Type definitions matching schema.prisma
 
-// Enum types matching schema.prisma
-export type BudgetRequestStatus = 'DRAFT' | 'SUBMITTED' | 'APPROVED' | 'REJECTED' | 'CANCELLED';
-export type PurchaseRequestStatus = 'DRAFT' | 'POSTED' | 'REJECTED' | 'APPROVED' | 'CLOSED';
-export type RequestType = 'REGULAR' | 'PROJECT_BASED' | 'BUDGET_SHORTAGE' | 'URGENT' | 'EMERGENCY';
+// Enum types matching schema.prisma (updated to match current schema)
+export type BudgetRequestStatus = 'PENDING' | 'APPROVED' | 'REJECTED' | 'ADJUSTED' | 'CLOSED';
+export type RequestType = 'REGULAR' | 'PROJECT_BASED' | 'URGENT' | 'EMERGENCY';
 export type UserRole = 'ADMIN' | 'NON_ADMIN';
 
 export interface BudgetRequestCreate {
-  // Creator Information (Auto-populated from JWT)
-  createdBy: string;
-  createdByName?: string;
-  createdByEmail?: string;
-  createdByRole: UserRole;
-  department: string; // "finance" | "hr" | "inventory" | "operations"
-
-  // Request Details (User Input)
-  amountRequested: number;
-  purpose: string;
-  justification: string;
-  category?: string; // "operational" | "capital" | "administrative" | "emergency"
-  priority?: string; // "low" | "medium" | "high" | "urgent"
-  urgencyReason?: string;
-
-  // Budget Period Context (Optional)
-  fiscalYear?: number;
-  fiscalPeriod?: string;
-
-  // Purchase Request Integration (Optional - from Inventory)
-  linkedPurchaseRequestId?: number;
-  linkedPurchaseRequestRefNo?: string;
-  linkedPurchaseRequestType?: RequestType;
-  linkedPurchaseRequestUrl?: string;
-
-  // Multi-Item Support (Optional)
-  totalItemsRequested?: number;
-  totalSuppliersInvolved?: number;
-  itemBreakdown?: string; // JSON string
-  supplierBreakdown?: string; // JSON string
-
-  // Supporting Documents
-  attachmentUrls?: string; // JSON string
+  // Request Info (aligned with schema fields)
+  department_id: string;
+  department_name?: string;
+  requested_by: string;  // User ID
+  requested_for?: string;  // Optional: for whom the budget is requested
+  total_amount: number;
+  purpose?: string;
+  remarks?: string;
+  request_type?: RequestType;
+  pr_reference_code?: string;  // Link to Purchase Request
+  status?: BudgetRequestStatus;
 
   // Item Allocations
   items?: BudgetRequestItemCreate[];
 }
 
 export interface BudgetRequestItemCreate {
-  itemName: string;
-  itemCode?: string;
-  itemCategory?: string;
-  quantity: number;
-  unitCost: number;
-  totalCost: number;
-  supplierId?: string;
-  supplierName?: string;
-  supplierRating?: number;
-  itemPriority?: string; // "must_have" | "should_have" | "nice_to_have"
-  isEssential?: boolean;
-  alternativeOptions?: string; // JSON string
+  category_id?: number;  // Links to budget_category
+  description?: string;
+  requested_amount: number;
+  notes?: string;
+  pr_item_id?: number;  // Optional link to purchase_request_item
 }
 
 export interface BudgetRequestUpdate {
-  amountRequested?: number;
+  total_amount?: number;
   purpose?: string;
-  justification?: string;
-  category?: string;
-  priority?: string;
-  urgencyReason?: string;
-  fiscalYear?: number;
-  fiscalPeriod?: string;
-  attachmentUrls?: string;
+  remarks?: string;
+  request_type?: RequestType;
+  department_name?: string;
 }
 
 export interface BudgetRequestApproval {
-  reviewNotes?: string;
-  reservedAmount?: number;
-  bufferPercentage?: number; // Default 5%
+  remarks?: string;
 }
 
 export interface BudgetRequestRejection {
-  reviewNotes: string; // Required
-  rejectionReason?: string;
+  rejection_reason: string; // Required
 }
 
 export interface BudgetRequestFilters {
@@ -89,12 +52,11 @@ export interface BudgetRequestFilters {
   limit?: number;
   status?: BudgetRequestStatus | string;
   department?: string;
-  priority?: string;
-  category?: string;
+  request_type?: RequestType | string;
   dateFrom?: string;
   dateTo?: string;
-  linkedPurchaseRequestId?: number;
-  createdBy?: string;
+  pr_reference_code?: string;
+  requested_by?: string;
   search?: string;
   sortBy?: string;
   sortOrder?: 'asc' | 'desc';
@@ -102,174 +64,73 @@ export interface BudgetRequestFilters {
 
 export interface BudgetRequestResponse {
   id: number;
-  requestCode: string;
+  request_code: string;
   
-  // Creator Information
-  createdBy: string;
-  createdByName: string | null;
-  createdByEmail: string | null;
-  createdByRole: UserRole;
-  department: string;
-
+  // Department and requester info
+  department_id: string;
+  department_name: string | null;
+  requested_by: string;
+  requested_for: string | null;
+  request_date: Date;
+  
   // Request Details
-  amountRequested: number;
-  purpose: string;
-  justification: string;
-  category: string | null;
-  priority: string | null;
-  urgencyReason: string | null;
-
-  // Budget Period
-  fiscalYear: number | null;
-  fiscalPeriod: string | null;
-
-  // PR Integration
-  linkedPurchaseRequestId: number | null;
-  linkedPurchaseRequestRefNo: string | null;
-  linkedPurchaseRequestType: RequestType | null;
-  linkedPurchaseRequestUrl: string | null;
-  isAutoLinked: boolean;
-
-  // Multi-Item Support
-  totalItemsRequested: number | null;
-  totalSuppliersInvolved: number | null;
-  itemBreakdown: string | null;
-  supplierBreakdown: string | null;
-
-  // Budget Context
-  departmentBudgetRemaining: number | null;
-  budgetShortfall: number | null;
-  budgetUtilizationBeforeRequest: number | null;
-
-  // Approval Workflow
+  total_amount: number;
   status: BudgetRequestStatus;
-  reviewedBy: string | null;
-  reviewedByName: string | null;
-  reviewNotes: string | null;
-  reviewedAt: Date | null;
+  purpose: string | null;
+  remarks: string | null;
+  request_type: RequestType;
+  pr_reference_code: string | null;
 
-  // Budget Reservation
-  reservedAmount: number | null;
-  bufferAmount: number | null;
-  bufferPercentage: number | null;
-  reservationExpiry: Date | null;
-  isReserved: boolean;
-  reservedAt: Date | null;
-
-  // Utilization Tracking
-  actualAmountUtilized: number | null;
-  utilizationDate: Date | null;
-  isFullyUtilized: boolean;
-  remainingReserved: number | null;
-
-  // Financial Impact
-  budgetBefore: number | null;
-  budgetAfter: number | null;
-  utilizationRate: number | null;
-
-  // Supporting Documents
-  attachmentUrls: string | null;
-
-  // Status Tracking
-  isExpired: boolean;
-  isCancelled: boolean;
-  cancelledBy: string | null;
-  cancelledAt: Date | null;
-  cancellationReason: string | null;
-
-  // Escalation & SLA
-  escalationLevel: number;
-  escalatedTo: string | null;
-  escalatedAt: Date | null;
-  slaDeadline: Date | null;
-  isOverdue: boolean;
+  // Approval fields
+  approved_by: string | null;
+  approved_at: Date | null;
+  rejected_by: string | null;
+  rejected_at: Date | null;
+  rejection_reason: string | null;
 
   // Audit Trail
-  createdAt: Date;
-  updatedBy: string | null;
-  updatedAt: Date;
-  approvedBy: string | null;
-  approvedAt: Date | null;
-  rejectedBy: string | null;
-  rejectedAt: Date | null;
-  deletedBy: string | null;
-  deletedAt: Date | null;
-  isDeleted: boolean;
+  created_at: Date;
+  updated_at: Date;
+  is_deleted: boolean;
 
   // Relations (optional, included with specific queries)
-  itemAllocations?: BudgetRequestItemAllocationResponse[];
-  approvalHistory?: BudgetRequestApprovalHistoryResponse[];
-  notifications?: BudgetRequestNotificationResponse[];
+  items?: BudgetRequestItemResponse[];
 }
 
-export interface BudgetRequestItemAllocationResponse {
+export interface BudgetRequestItemResponse {
   id: number;
-  budgetRequestId: number;
-  itemName: string;
-  itemCode: string | null;
-  itemCategory: string | null;
-  quantity: number;
-  unitCost: number;
-  totalCost: number;
-  supplierId: string | null;
-  supplierName: string | null;
-  supplierRating: number | null;
-  allocatedAmount: number;
-  isFullyAllocated: boolean;
-  allocationPercentage: number | null;
-  allocationNotes: string | null;
-  itemPriority: string | null;
-  isEssential: boolean;
-  alternativeOptions: string | null;
-  status: BudgetRequestStatus;
-  reviewedBy: string | null;
-  reviewNotes: string | null;
-  actualAmountSpent: number | null;
-  costVariance: number | null;
-  isUtilized: boolean;
-  createdAt: Date;
-  updatedAt: Date;
-  approvedAt: Date | null;
-  isDeleted: boolean;
+  budget_request_id: number;
+  category_id: number | null;
+  description: string | null;
+  requested_amount: number;
+  notes: string | null;
+  pr_item_id: number | null;
+  category?: BudgetCategoryResponse;
 }
 
-export interface BudgetRequestApprovalHistoryResponse {
+export interface BudgetCategoryResponse {
   id: number;
-  budgetRequestId: number;
-  fromStatus: BudgetRequestStatus | null;
-  toStatus: BudgetRequestStatus;
-  changedBy: string;
-  changedByName: string | null;
-  changedByRole: UserRole | null;
-  changedAt: Date;
-  action: string;
-  comments: string | null;
-  attachmentUrls: string | null;
-  amountBefore: number | null;
-  amountAfter: number | null;
-  ipAddress: string | null;
-  userAgent: string | null;
+  code: string;
+  name: string;
+  description: string | null;
+  is_active: boolean;
+  created_at: Date;
+  updated_at: Date;
 }
 
-export interface BudgetRequestNotificationResponse {
+export interface AttachmentResponse {
   id: number;
-  budgetRequestId: number;
-  notificationType: string;
-  recipientUserId: string;
-  recipientEmail: string | null;
-  recipientName: string | null;
-  subject: string;
-  message: string;
-  sentAt: Date | null;
-  deliveryStatus: string;
-  deliveryError: string | null;
-  deliveryProvider: string | null;
-  readAt: Date | null;
-  clickedAt: Date | null;
-  actionTaken: string | null;
-  retryCount: number;
-  maxRetries: number;
-  nextRetryAt: Date | null;
+  entity_type: string;
+  entity_id: string;
+  file_name: string;
+  file_type: string;
+  file_url: string;
+  file_size: number | null;
+  description: string | null;
+  uploaded_by: string | null;
+  created_at: Date;
+  updated_at: Date;
+  is_deleted: boolean;
 }
 
 export interface PaginationMeta {

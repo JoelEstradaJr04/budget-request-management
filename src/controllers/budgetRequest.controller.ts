@@ -30,30 +30,29 @@ export async function listBudgetRequests(req: Request, res: Response) {
              value !== 'null';
     };
 
-    // Build base filter
+    // Build base filter (schema uses snake_case)
     let filter: any = {
-      isDeleted: false
+      is_deleted: false
     };
 
     // Apply filters - only if values are valid
     if (isValidValue(status)) filter.status = status;
-    if (isValidValue(department)) filter.department = department;
-    if (isValidValue(priority)) filter.priority = priority;
+    if (isValidValue(department)) filter.department_id = department;
 
     // Apply search filter
     if (isValidValue(search)) {
       filter.OR = [
         { purpose: { contains: search as string, mode: 'insensitive' } },
-        { justification: { contains: search as string, mode: 'insensitive' } },
-        { requestCode: { contains: search as string, mode: 'insensitive' } }
+        { remarks: { contains: search as string, mode: 'insensitive' } },
+        { request_code: { contains: search as string, mode: 'insensitive' } }
       ];
     }
 
     // Apply date range filter
     if (isValidValue(dateFrom) || isValidValue(dateTo)) {
-      filter.createdAt = {};
-      if (isValidValue(dateFrom)) filter.createdAt.gte = new Date(dateFrom as string);
-      if (isValidValue(dateTo)) filter.createdAt.lte = new Date(dateTo as string);
+      filter.created_at = {};
+      if (isValidValue(dateFrom)) filter.created_at.gte = new Date(dateFrom as string);
+      if (isValidValue(dateTo)) filter.created_at.lte = new Date(dateTo as string);
     }
 
     // Apply role-based access control
@@ -82,23 +81,13 @@ export async function listBudgetRequests(req: Request, res: Response) {
       async () => {
         const skip = (Number(page) - 1) * Number(limit);
         const [data, total] = await Promise.all([
-          service.findMany(filter, {
-            skip,
-            take: Number(limit),
-            orderBy: { createdAt: 'desc' },
-            include: {
-              itemAllocations: {
-                select: {
-                  id: true,
-                  itemName: true,
-                  totalCost: true,
-                  status: true
-                }
-              }
-            }
-          }),
-          service.count(filter)
-        ]);
+            service.findMany(filter, {
+              skip,
+              take: Number(limit),
+              orderBy: { created_at: 'desc' }
+            }),
+            service.count(filter)
+          ]);
         return { data, total };
       },
       180 // Cache for 3 minutes (balance between freshness and performance)
@@ -148,7 +137,7 @@ export async function getBudgetRequest(req: Request, res: Response) {
     // Log view action (don't await - fire and forget for performance)
     auditLogger.view({
       id: budgetRequest.id,
-      requestCode: budgetRequest.requestCode
+      requestCode: budgetRequest.request_code
     }, req.user!).catch(err => {
       console.error('Audit log error:', err.message);
     });
@@ -169,22 +158,22 @@ export async function createBudgetRequest(req: Request, res: Response) {
     // Log creation
     await auditLogger.create({
       id: budgetRequest.id,
-      requestCode: budgetRequest.requestCode,
-      department: budgetRequest.department,
-      amountRequested: budgetRequest.amountRequested
-    }, req.user!);
+      requestCode: budgetRequest.request_code,
+      department: budgetRequest.department_id,
+      amountRequested: budgetRequest.total_amount
+    }, req.user!).catch(err => console.error('Audit log error:', err.message));
 
     // Invalidate related caches
     await cache.invalidateBudgetRequests();
     await cache.invalidateAnalytics();
 
-    // Dispatch webhook
-    await webhookDispatcher.dispatch('budget_request.created', {
+    // Dispatch webhook (fire and forget)
+    webhookDispatcher.dispatch('budget_request.created', {
       budgetRequestId: budgetRequest.id,
-      requestCode: budgetRequest.requestCode,
-      department: budgetRequest.department,
-      amountRequested: Number(budgetRequest.amountRequested)
-    });
+      requestCode: budgetRequest.request_code,
+      department: budgetRequest.department_id,
+      amountRequested: Number(budgetRequest.total_amount)
+    }).catch(err => console.error('Webhook error:', err.message));
 
     return successResponse(
       res,
@@ -212,24 +201,19 @@ export async function submitBudgetRequest(req: Request, res: Response) {
     }
 
     // Verify ownership or admin role
-    if (existing.createdBy !== req.user!.id && !req.user!.role.toLowerCase().includes('admin')) {
+    if (existing.requested_by !== req.user!.id && !req.user!.role.toLowerCase().includes('admin')) {
       return forbiddenResponse(res, 'Only the requester or admins can submit this request');
     }
 
-    // Can only submit drafts
-    if (existing.status !== 'DRAFT') {
-      return errorResponse(res, 'Only draft budget requests can be submitted', 400);
-    }
-
-    // Submit
+    // Submit (schema uses PENDING as pending state)
     const updated = await service.submit(Number(id), req.user!);
 
     // Log submission
     await auditLogger.submit({
       id: updated.id,
-      requestCode: updated.requestCode,
-      amountRequested: updated.amountRequested
-    }, req.user!);
+      requestCode: updated.request_code,
+      amountRequested: updated.total_amount
+    }, req.user!).catch(err => console.error('Audit log error:', err.message));
 
     // Invalidate related caches
     await cache.deleteCache(cache.generateCacheKey('requests:detail', { id: Number(id) }));
@@ -237,13 +221,13 @@ export async function submitBudgetRequest(req: Request, res: Response) {
     await cache.invalidateAnalytics();
 
     // Dispatch webhook
-    await webhookDispatcher.dispatch('budget_request.submitted', {
+    webhookDispatcher.dispatch('budget_request.submitted', {
       budgetRequestId: updated.id,
-      requestCode: updated.requestCode,
-      department: updated.department,
-      amountRequested: Number(updated.amountRequested),
-      createdBy: updated.createdBy
-    });
+      requestCode: updated.request_code,
+      department: updated.department_id,
+      amountRequested: Number(updated.total_amount),
+      createdBy: updated.requested_by
+    }).catch(err => console.error('Webhook error:', err.message));
 
     return successResponse(res, updated, 'Budget request submitted successfully');
   } catch (error: any) {
@@ -263,9 +247,9 @@ export async function approveBudgetRequest(req: Request, res: Response) {
       return notFoundResponse(res, 'Budget request');
     }
 
-    // Can only approve submitted requests
-    if (existing.status !== 'SUBMITTED') {
-      return errorResponse(res, 'Only submitted budget requests can be approved', 400);
+    // Can only approve pending requests
+    if (existing.status !== 'PENDING') {
+      return errorResponse(res, 'Only pending budget requests can be approved', 400);
     }
 
     // Approve budget request
@@ -274,11 +258,10 @@ export async function approveBudgetRequest(req: Request, res: Response) {
     // Log approval
     await auditLogger.approve({
       id: approved.id,
-      requestCode: approved.requestCode,
-      amountRequested: approved.amountRequested,
-      reservedAmount: approved.reservedAmount,
+      requestCode: approved.request_code,
+      amountRequested: approved.total_amount,
       approvedBy: req.user!.id
-    }, req.user!);
+    }, req.user!).catch(err => console.error('Audit log error:', err.message));
 
     // Invalidate related caches (specific detail + all lists + analytics)
     await cache.deleteCache(cache.generateCacheKey('requests:detail', { id: Number(id) }));
@@ -286,14 +269,13 @@ export async function approveBudgetRequest(req: Request, res: Response) {
     await cache.invalidateAnalytics();
 
     // Dispatch webhook
-    await webhookDispatcher.dispatch('budget_request.approved', {
+    webhookDispatcher.dispatch('budget_request.approved', {
       budgetRequestId: approved.id,
-      requestCode: approved.requestCode,
-      department: approved.department,
-      amountRequested: Number(approved.amountRequested),
-      reservedAmount: Number(approved.reservedAmount),
+      requestCode: approved.request_code,
+      department: approved.department_id,
+      amountRequested: Number(approved.total_amount),
       approvedBy: req.user!.id
-    });
+    }).catch(err => console.error('Webhook error:', err.message));
 
     return successResponse(res, approved, 'Budget request approved successfully');
   } catch (error: any) {
@@ -313,9 +295,9 @@ export async function rejectBudgetRequest(req: Request, res: Response) {
       return notFoundResponse(res, 'Budget request');
     }
 
-    // Can only reject submitted requests
-    if (existing.status !== 'SUBMITTED') {
-      return errorResponse(res, 'Only submitted budget requests can be rejected', 400);
+    // Can only reject pending requests
+    if (existing.status !== 'PENDING') {
+      return errorResponse(res, 'Only pending budget requests can be rejected', 400);
     }
 
     // Reject budget request
@@ -324,11 +306,11 @@ export async function rejectBudgetRequest(req: Request, res: Response) {
     // Log rejection
     await auditLogger.reject({
       id: rejected.id,
-      requestCode: rejected.requestCode,
-      amountRequested: rejected.amountRequested,
+      requestCode: rejected.request_code,
+      amountRequested: rejected.total_amount,
       rejectedBy: req.user!.id,
-      reason: req.body.reviewNotes
-    }, req.user!);
+      reason: req.body.rejection_reason
+    }, req.user!).catch(err => console.error('Audit log error:', err.message));
 
     // Invalidate related caches (specific detail + all lists + analytics)
     await cache.deleteCache(cache.generateCacheKey('requests:detail', { id: Number(id) }));
@@ -336,14 +318,14 @@ export async function rejectBudgetRequest(req: Request, res: Response) {
     await cache.invalidateAnalytics();
 
     // Dispatch webhook
-    await webhookDispatcher.dispatch('budget_request.rejected', {
+    webhookDispatcher.dispatch('budget_request.rejected', {
       budgetRequestId: rejected.id,
-      requestCode: rejected.requestCode,
-      department: rejected.department,
-      amountRequested: Number(rejected.amountRequested),
+      requestCode: rejected.request_code,
+      department: rejected.department_id,
+      amountRequested: Number(rejected.total_amount),
       rejectedBy: req.user!.id,
-      reason: req.body.reviewNotes
-    });
+      reason: req.body.rejection_reason
+    }).catch(err => console.error('Webhook error:', err.message));
 
     return successResponse(res, rejected, 'Budget request rejected successfully');
   } catch (error: any) {

@@ -7,52 +7,38 @@ import ModalHeader from '../../../Components/ModalHeader';
 
 // Types - using the same as your existing BudgetRequest interface
 interface BudgetItem {
-  item_name: string;
-  quantity: number;
-  unit_measure: string;
-  unit_cost: number;
-  supplier: string;
-  subtotal: number;
-  itemPriority?: 'must_have' | 'should_have' | 'nice_to_have';
-  isEssential?: boolean;
+  id?: number;
+  budget_request_id?: number;
+  category_id?: number;
+  description?: string;
+  requested_amount: number;
+  notes?: string;
+  pr_item_id?: number;
 }
 
 interface BudgetRequest {
   id: number;
-  requestCode?: string;
-  purpose: string;
-  justification: string;
-  amountRequested: number;
-  status: 'DRAFT' | 'SUBMITTED' | 'APPROVED' | 'REJECTED' | 'CANCELLED';
-  category: string;
-  priority?: 'low' | 'medium' | 'high' | 'urgent';
-  urgencyReason?: string;
-  createdBy: number;
-  createdByName: string;
-  department: string;
-  fiscalYear: number;
-  fiscalPeriod: string;
-  reservedAmount?: number;
-  bufferPercentage?: number;
-  reviewedBy?: number;
-  reviewedByName?: string;
-  reviewNotes?: string;
-  createdAt: string;
-  updatedAt?: string;
-  approvedAt?: string;
-  rejectedAt?: string;
-  cancelledAt?: string;
-  // Extended fields
-  requester_position?: string;
-  start_date?: string;
-  end_date?: string;
+  request_code: string;
+  department_id: string;
+  department_name?: string;
+  requested_by: string;
+  requested_for?: string;
+  request_date: string;
+  total_amount: number;
+  status: 'PENDING' | 'APPROVED' | 'REJECTED' | 'ADJUSTED' | 'CLOSED';
+  purpose?: string;
+  remarks?: string;
+  request_type: 'REGULAR' | 'PROJECT_BASED' | 'URGENT' | 'EMERGENCY';
+  pr_reference_code?: string;
+  approved_by?: string;
+  approved_at?: string;
+  rejected_by?: string;
+  rejected_at?: string;
+  rejection_reason?: string;
   items?: BudgetItem[];
-  itemAllocations?: BudgetItem[];
-  itemBreakdown?: string; // JSON string from database
-  supplierBreakdown?: string; // JSON string from database
-  totalItemsRequested?: number;
-  totalSuppliersInvolved?: number;
-  supporting_documents?: File[] | string[]; // Could be File objects or file URLs
+  created_at: string;
+  updated_at?: string;
+  is_deleted: boolean;
 }
 
 interface ViewBudgetRequestProps {
@@ -75,23 +61,23 @@ const ViewBudgetRequest: React.FC<ViewBudgetRequestProps> = ({
   const StatusBadge = ({ status }: { status: string }) => {
     const getStatusLabel = (status: string) => {
       switch (status) {
-        case 'DRAFT': return 'Draft';
-        case 'SUBMITTED': return 'Submitted';
+        case 'PENDING': return 'Pending';
         case 'APPROVED': return 'Approved';
         case 'REJECTED': return 'Rejected';
-        case 'CANCELLED': return 'Cancelled';
+        case 'ADJUSTED': return 'Adjusted';
+        case 'CLOSED': return 'Closed';
         default: return status;
       }
     };
 
     const getStatusClass = (status: string) => {
       switch (status) {
-        case 'DRAFT': return 'Draft';
-        case 'SUBMITTED': return 'pending-approval';
+        case 'PENDING': return 'pending-approval';
         case 'APPROVED': return 'Approved';
         case 'REJECTED': return 'Rejected';
-        case 'CANCELLED': return 'Closed';
-        default: return 'Draft';
+        case 'ADJUSTED': return 'Draft';
+        case 'CLOSED': return 'Closed';
+        default: return 'pending-approval';
       }
     };
 
@@ -102,110 +88,20 @@ const ViewBudgetRequest: React.FC<ViewBudgetRequestProps> = ({
     );
   };
 
-  // Parse itemBreakdown from JSON string if available
+  // Get items from request (simplified for new schema)
   const getItems = (): BudgetItem[] => {
-    // Helper function to normalize item data from any source
-    const normalizeItem = (item: any): BudgetItem => {
-      console.log('Raw item received:', JSON.stringify(item, null, 2));
-      console.log('Item keys:', Object.keys(item));
-      
-      // More defensive value extraction
-      let quantity = 0;
-      if (item.quantity !== undefined && item.quantity !== null) {
-        quantity = Number(item.quantity);
-        if (isNaN(quantity)) quantity = 0;
-      }
-      
-      let unitCost = 0;
-      const costValue = item.estimatedCost || item.unitCost || item.unit_cost;
-      if (costValue !== undefined && costValue !== null) {
-        unitCost = Number(costValue);
-        if (isNaN(unitCost)) unitCost = 0;
-      }
-      
-      let subtotal = 0;
-      const subtotalValue = item.subtotal || item.totalCost;
-      if (subtotalValue !== undefined && subtotalValue !== null) {
-        subtotal = Number(subtotalValue);
-        if (isNaN(subtotal)) subtotal = quantity * unitCost;
-      } else {
-        subtotal = quantity * unitCost;
-      }
-      
-      console.log('Extracted values:', { quantity, unitCost, subtotal });
-      
-      const normalized = {
-        item_name: item.itemName || item.item_name || 'Unknown Item',
-        quantity: quantity,
-        unit_measure: item.unitMeasure || item.unit_measure || 'pcs',
-        unit_cost: unitCost,
-        supplier: item.supplierName || item.supplier || 'Unknown Supplier',
-        subtotal: subtotal,
-        itemPriority: item.itemPriority || undefined,
-        isEssential: item.isEssential !== undefined ? item.isEssential : undefined
-      };
-      
-      console.log('Final normalized item:', JSON.stringify(normalized, null, 2));
-      return normalized;
-    };
-
-    console.log('Getting items from request:', {
-      hasItems: !!request.items,
-      hasItemAllocations: !!request.itemAllocations,
-      hasItemBreakdown: !!request.itemBreakdown
-    });
-
-    // First check if items array exists (from form submission)
     if (request.items && request.items.length > 0) {
-      console.log('Using items from request.items:', request.items);
-      return request.items.map(normalizeItem);
-    }
-    
-    // Then check itemAllocations (from database relation)
-    if (request.itemAllocations && request.itemAllocations.length > 0) {
-      console.log('Using items from request.itemAllocations:', request.itemAllocations);
-      return request.itemAllocations.map(normalizeItem);
-    }
-    
-    // Finally try to parse itemBreakdown JSON string
-    if (request.itemBreakdown) {
-      try {
-        console.log('Parsing itemBreakdown string:', request.itemBreakdown);
-        const parsed = JSON.parse(request.itemBreakdown);
-        console.log('Parsed itemBreakdown:', parsed);
-        const normalized = parsed.map(normalizeItem);
-        console.log('Final normalized items:', normalized);
-        return normalized;
-      } catch (e) {
-        console.error('Failed to parse itemBreakdown:', e);
-        return [];
-      }
-    }
-    
-    console.log('No items found in request');
-    return [];
-  };
-
-  // Parse supplierBreakdown from JSON string if available
-  const getSupplierBreakdown = () => {
-    if (request.supplierBreakdown) {
-      try {
-        return JSON.parse(request.supplierBreakdown);
-      } catch (e) {
-        console.error('Failed to parse supplierBreakdown:', e);
-        return [];
-      }
+      return request.items;
     }
     return [];
   };
 
   const items = getItems();
-  const supplierBreakdown = getSupplierBreakdown();
 
   // Calculate total from items if available
   const calculateItemsTotal = () => {
     if (items.length === 0) return 0;
-    return items.reduce((total, item) => total + item.subtotal, 0);
+    return items.reduce((total, item) => total + item.requested_amount, 0);
   };
 
   // Format file size
@@ -228,36 +124,36 @@ const ViewBudgetRequest: React.FC<ViewBudgetRequestProps> = ({
     const history = [
       {
         action: 'Request Created',
-        user: request.createdByName,
-        date: request.createdAt,
-        details: `Created as ${request.status}`
+        user: request.requested_by,
+        date: request.created_at,
+        details: `Created with status ${request.status}`
       }
     ];
 
-    if (request.status === 'APPROVED' && request.approvedAt && request.reviewedByName) {
+    if (request.status === 'APPROVED' && request.approved_at && request.approved_by) {
       history.push({
         action: 'Request Approved',
-        user: request.reviewedByName,
-        date: request.approvedAt,
-        details: 'Budget request approved and funds allocated'
+        user: request.approved_by,
+        date: request.approved_at,
+        details: 'Budget request approved'
       });
     }
 
-    if (request.status === 'REJECTED' && request.reviewedByName) {
+    if (request.status === 'REJECTED' && request.rejected_by) {
       history.push({
         action: 'Request Rejected',
-        user: request.reviewedByName,
-        date: request.rejectedAt || request.updatedAt || '',
-        details: request.reviewNotes || 'No reason provided'
+        user: request.rejected_by,
+        date: request.rejected_at || request.updated_at || '',
+        details: request.rejection_reason || 'No reason provided'
       });
     }
 
-    if (request.status === 'CANCELLED') {
+    if (request.status === 'CLOSED') {
       history.push({
-        action: 'Request Cancelled',
-        user: request.reviewedByName || 'System',
-        date: request.cancelledAt || request.updatedAt || '',
-        details: request.reviewNotes || 'Budget request cancelled'
+        action: 'Request Closed',
+        user: request.approved_by || 'System',
+        date: request.updated_at || '',
+        details: 'Budget request closed'
       });
     }
 
@@ -295,69 +191,50 @@ const ViewBudgetRequest: React.FC<ViewBudgetRequestProps> = ({
             <div className="displayRow">
               <div className="displayField displayFieldHalf">
                 <label>Request Code</label>
-                <div className="displayValue highlightValue">{request.requestCode || `REQ-${request.id}`}</div>
+                <div className="displayValue highlightValue">{request.request_code}</div>
               </div>
               
               <div className="displayField displayFieldHalf">
                 <label>Date of Request</label>
-                <div className="displayValue">{formatDate(request.createdAt)}</div>
+                <div className="displayValue">{formatDate(request.request_date)}</div>
               </div>
             </div>
 
             <div className="displayRow">
               <div className="displayField displayFieldHalf">
                 <label>Department</label>
-                <div className="displayValue">{request.department}</div>
+                <div className="displayValue">{request.department_name || request.department_id}</div>
               </div>
               
               <div className="displayField displayFieldHalf">
-                <label>Requester Name</label>
-                <div className="displayValue">{request.createdByName}</div>
+                <label>Requested By</label>
+                <div className="displayValue">{request.requested_by}</div>
               </div>
             </div>
 
-            <div className="displayRow">
-              <div className="displayField displayFieldHalf">
-                <label>Fiscal Year</label>
-                <div className="displayValue">{request.fiscalYear}</div>
+            {request.requested_for && (
+              <div className="displayRow">
+                <div className="displayField">
+                  <label>Requested For</label>
+                  <div className="displayValue">{request.requested_for}</div>
+                </div>
               </div>
-              
-              <div className="displayField displayFieldHalf">
-                <label>Fiscal Period</label>
-                <div className="displayValue">{request.fiscalPeriod}</div>
-              </div>
-            </div>
+            )}
 
             <div className="displayRow">
               <div className="displayField displayFieldHalf">
-                <label>Requester Position</label>
-                <div className="displayValue">{request.requester_position || 'Not specified'}</div>
-              </div>
-              
-              <div className="displayField displayFieldHalf">
-                <label>Category</label>
-                <div className="displayValue">{request.category}</div>
-              </div>
-            </div>
-
-            <div className="displayRow">
-              <div className="displayField displayFieldHalf">
-                <label>Priority</label>
+                <label>Request Type</label>
                 <div className="displayValue">
-                  {request.priority ? (
-                    <span className={`priority-badge priority-${request.priority.toLowerCase()}`}>
-                      {request.priority.toUpperCase()}
-                    </span>
-                  ) : (
-                    <span className="priority-badge priority-none">N/A</span>
-                  )}
+                  <span className={`priority-badge priority-${request.request_type.toLowerCase()}`}>
+                    {request.request_type}
+                  </span>
                 </div>
               </div>
               
-              {request.urgencyReason && (
+              {request.pr_reference_code && (
                 <div className="displayField displayFieldHalf">
-                  <label>Urgency Reason</label>
-                  <div className="displayValue">{request.urgencyReason}</div>
+                  <label>PR Reference</label>
+                  <div className="displayValue">{request.pr_reference_code}</div>
                 </div>
               )}
             </div>
@@ -366,63 +243,30 @@ const ViewBudgetRequest: React.FC<ViewBudgetRequestProps> = ({
             <div className="sectionHeader">Budget Details</div>
             
             <div className="displayRow">
-              <div className="displayField displayFieldHalf">
-                <label>Requested Amount</label>
+              <div className="displayField">
+                <label>Total Amount</label>
                 <div className="displayValue highlightValue">
-                  ₱{request.amountRequested.toLocaleString(undefined, { 
+                  ₱{Number(request.total_amount).toLocaleString(undefined, { 
                     minimumFractionDigits: 2, 
                     maximumFractionDigits: 2 
                   })}
                 </div>
               </div>
-              
-              {request.reservedAmount && (
-                <div className="displayField displayFieldHalf">
-                  <label>Reserved Amount</label>
-                  <div className="displayValue highlightValue">
-                    ₱{request.reservedAmount.toLocaleString(undefined, { 
-                      minimumFractionDigits: 2, 
-                      maximumFractionDigits: 2 
-                    })}
-                  </div>
-                </div>
-              )}
-              
-              {request.bufferPercentage && (
-                <div className="displayField displayFieldHalf">
-                  <label>Buffer Percentage</label>
-                  <div className="displayValue">{request.bufferPercentage}%</div>
-                </div>
-              )}
             </div>
 
-            <div className="displayField">
-              <label>Budget Purpose / Project Name</label>
-              <div className="displayValue highlightValue">{request.purpose}</div>
-            </div>
-
-            <div className="displayField">
-              <label>Justification</label>
-              <div className="displayValue displayValueTextarea">{request.justification}</div>
-            </div>
-
-            <div className="displayRow">
-              <div className="displayField displayFieldHalf">
-                <label>Start Date</label>
-                <div className="displayValue">
-                  {request.start_date ? formatDate(request.start_date) : 
-                   <span className="displayValueEmpty">Not specified</span>}
-                </div>
+            {request.purpose && (
+              <div className="displayField">
+                <label>Purpose</label>
+                <div className="displayValue highlightValue">{request.purpose}</div>
               </div>
-              
-              <div className="displayField displayFieldHalf">
-                <label>End Date</label>
-                <div className="displayValue">
-                  {request.end_date ? formatDate(request.end_date) : 
-                   <span className="displayValueEmpty">Not specified</span>}
-                </div>
+            )}
+
+            {request.remarks && (
+              <div className="displayField">
+                <label>Remarks</label>
+                <div className="displayValue displayValueTextarea">{request.remarks}</div>
               </div>
-            </div>
+            )}
 
             {/* Items Section */}
             {items && items.length > 0 && (
@@ -436,70 +280,26 @@ const ViewBudgetRequest: React.FC<ViewBudgetRequestProps> = ({
                   <div key={index} className="itemDisplayContainer">
                     <div className="itemDisplayGrid">
                       <div className="itemDisplayField">
-                        <label>Item Name</label>
-                        <div className="itemDisplayValue">{item.item_name}</div>
+                        <label>Description</label>
+                        <div className="itemDisplayValue">{item.description || 'No description'}</div>
                       </div>
 
                       <div className="itemDisplayField">
-                        <label>Quantity</label>
-                        <div className="itemDisplayValue">{item.quantity}</div>
-                      </div>
-
-                      <div className="itemDisplayField">
-                        <label>Unit</label>
-                        <div className="itemDisplayValue">{item.unit_measure}</div>
-                      </div>
-
-                      <div className="itemDisplayField">
-                        <label>Unit Cost</label>
+                        <label>Requested Amount</label>
                         <div className="itemDisplayValue">
-                          ₱{(item.unit_cost || 0).toLocaleString(undefined, { 
+                          ₱{Number(item.requested_amount).toLocaleString(undefined, { 
                             minimumFractionDigits: 2, 
                             maximumFractionDigits: 2 
                           })}
                         </div>
                       </div>
 
-                      <div className="itemDisplayField">
-                        <label>Supplier</label>
-                        <div className="itemDisplayValue">{item.supplier || 'N/A'}</div>
-                      </div>
-
-                      <div className="itemDisplayField">
-                        <label>Item Priority</label>
-                        <div className="itemDisplayValue">
-                          {item.itemPriority ? (
-                            <span className={`item-priority-badge item-priority-${item.itemPriority.replace('_', '-')}`}>
-                              {item.itemPriority.replace('_', ' ').toUpperCase()}
-                            </span>
-                          ) : (
-                            <span className="item-priority-badge item-priority-none">N/A</span>
-                          )}
+                      {item.notes && (
+                        <div className="itemDisplayField">
+                          <label>Notes</label>
+                          <div className="itemDisplayValue">{item.notes}</div>
                         </div>
-                      </div>
-
-                      <div className="itemDisplayField">
-                        <label>Essential</label>
-                        <div className="itemDisplayValue">
-                          {item.isEssential !== undefined ? (
-                            <span className={`essential-badge ${item.isEssential ? 'essential-yes' : 'essential-no'}`}>
-                              {item.isEssential ? 'Yes' : 'No'}
-                            </span>
-                          ) : (
-                            <span className="essential-badge essential-none">N/A</span>
-                          )}
-                        </div>
-                      </div>
-
-                      <div className="itemDisplayField">
-                        <label>Subtotal</label>
-                        <div className="subtotalDisplayField">
-                          ₱{(item.subtotal || 0).toLocaleString(undefined, { 
-                            minimumFractionDigits: 2, 
-                            maximumFractionDigits: 2 
-                          })}
-                        </div>
-                      </div>
+                      )}
                     </div>
                   </div>
                 ))}
@@ -516,76 +316,7 @@ const ViewBudgetRequest: React.FC<ViewBudgetRequestProps> = ({
               </div>
             )}
 
-            {/* Supplier Breakdown Section */}
-            {supplierBreakdown && supplierBreakdown.length > 0 && (
-              <div className="supplierBreakdownSection">
-                <div className="sectionHeader">Supplier Breakdown</div>
-                <div className="supplierBreakdownGrid">
-                  {supplierBreakdown.map((supplier: any, index: number) => (
-                    <div key={index} className="supplierBreakdownCard">
-                      <div className="supplierBreakdownName">
-                        <i className="ri-store-line" /> {supplier.supplierName || 'Unknown Supplier'}
-                      </div>
-                      <div className="supplierBreakdownDetails">
-                        <div className="supplierBreakdownField">
-                          <span className="supplierBreakdownLabel">Items:</span>
-                          <span className="supplierBreakdownValue">{supplier.itemCount || 0}</span>
-                        </div>
-                        <div className="supplierBreakdownField">
-                          <span className="supplierBreakdownLabel">Total Amount:</span>
-                          <span className="supplierBreakdownValue highlightValue">
-                            ₱{(Number(supplier.totalAmount) || 0).toLocaleString(undefined, { 
-                              minimumFractionDigits: 2, 
-                              maximumFractionDigits: 2 
-                            })}
-                          </span>
-                        </div>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-                <div className="supplierBreakdownSummary">
-                  <span>Total Suppliers: <strong>{supplierBreakdown.length}</strong></span>
-                  <span>Total Items: <strong>{items.length}</strong></span>
-                </div>
-              </div>
-            )}
 
-            {/* Supporting Documents Section */}
-            <div className="sectionHeader">Supporting Documents</div>
-            
-            <div className="fileDisplaySection">
-              {request.supporting_documents && request.supporting_documents.length > 0 ? (
-                <div className="fileDisplayList">
-                  {request.supporting_documents.map((file, index) => (
-                    <div key={index} className="fileDisplayItem">
-                      <div>
-                        <div className="fileDisplayName">
-                          {typeof file === 'string' ? file : file.name}
-                        </div>
-                        {typeof file !== 'string' && (
-                          <div className="fileDisplaySize">{formatFileSize(file.size)}</div>
-                        )}
-                      </div>
-                      <button
-                        className="downloadFileBtn"
-                        onClick={() => handleFileDownload(file, index)}
-                        title="Download File"
-                      >
-                        <i className="ri-download-line" /> Download
-                      </button>
-                    </div>
-                  ))}
-                </div>
-              ) : (
-                <>
-                  <div className="fileDisplayIcon">
-                    <i className="ri-file-line" />
-                  </div>
-                  <div className="noFilesMessage">No supporting documents attached</div>
-                </>
-              )}
-            </div>
 
             {/* Review Information */}
             {(request.status === 'APPROVED' || request.status === 'REJECTED') && (
@@ -594,23 +325,23 @@ const ViewBudgetRequest: React.FC<ViewBudgetRequestProps> = ({
                 <div className="displayRow">
                   <div className="displayField displayFieldHalf">
                     <label>{request.status === 'APPROVED' ? 'Approved By' : 'Rejected By'}</label>
-                    <div className="displayValue">{request.reviewedByName || 'Not specified'}</div>
+                    <div className="displayValue">{request.approved_by || request.rejected_by || 'Not specified'}</div>
                   </div>
                   
                   <div className="displayField displayFieldHalf">
                     <label>{request.status === 'APPROVED' ? 'Approval Date' : 'Rejection Date'}</label>
                     <div className="displayValue">
-                      {request.status === 'APPROVED' && request.approvedAt ? formatDate(request.approvedAt) :
-                       request.status === 'REJECTED' && request.rejectedAt ? formatDate(request.rejectedAt) :
+                      {request.status === 'APPROVED' && request.approved_at ? formatDate(request.approved_at) :
+                       request.status === 'REJECTED' && request.rejected_at ? formatDate(request.rejected_at) :
                        <span className="displayValueEmpty">Not specified</span>}
                     </div>
                   </div>
                 </div>
 
-                {request.reviewNotes && (
+                {request.rejection_reason && (
                   <div className="displayField">
                     <label>{request.status === 'REJECTED' ? 'Rejection Reason' : 'Review Notes'}</label>
-                    <div className="displayValue displayValueTextarea">{request.reviewNotes}</div>
+                    <div className="displayValue displayValueTextarea">{request.rejection_reason}</div>
                   </div>
                 )}
               </>
@@ -645,7 +376,7 @@ const ViewBudgetRequest: React.FC<ViewBudgetRequestProps> = ({
                 <i className="ri-download-line" /> Export
               </button>
             )}
-            {onEdit && request.status === 'DRAFT' && (
+            {onEdit && request.status === 'PENDING' && (
               <button className="editButton" onClick={() => onEdit(request)}>
                 <i className="ri-edit-line" /> Edit
               </button>

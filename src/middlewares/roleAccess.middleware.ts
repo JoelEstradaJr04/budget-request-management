@@ -46,13 +46,13 @@ export function applyAccessFilter(
   if (roleLevel === 'admin') {
     return {
       ...baseQuery,
-      department: user.department
+      department_id: user.department
     };
   }
 
   // Regular User: Own records only
   return {
     ...baseQuery,
-    requestedBy: user.id
+    requested_by: user.id
   };
 }

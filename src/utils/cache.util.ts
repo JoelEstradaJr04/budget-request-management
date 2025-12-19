@@ -74,13 +74,22 @@ const lruCache = new LRUCache<string, any>({
 let redisClient: Redis | null = null;
 let redisAvailable = false;
 
-if (CACHE_ENABLED && REDIS_URL) {
+if (!CACHE_ENABLED) {
+  console.log('ℹ️  Cache disabled (ENABLE_CACHE=false)');
+} else if (!REDIS_URL) {
+  console.log('⚠️  Redis URL not configured. Local cache fallback active.');
+} else {
   try {
     redisClient = new Redis(REDIS_URL, {
       maxRetriesPerRequest: 3,
       enableReadyCheck: true,
       retryStrategy(times) {
-        const delay = Math.min(times * 50, 2000);
+        // Limit retries to prevent spam
+        if (times > 3) {
+          console.log('⚠️  Redis retry limit reached. Giving up.');
+          return null; // Stop retrying
+        }
+        const delay = Math.min(times * 1000, 3000);
         return delay;
       },
       reconnectOnError(err) {
@@ -106,12 +115,18 @@ if (CACHE_ENABLED && REDIS_URL) {
     });
 
     redisClient.on('error', (err) => {
-      console.error('❌ Redis error:', err.message);
+      // Only log first error to avoid spam
+      if (redisAvailable) {
+        console.error('❌ Redis error:', err.message);
+      }
       redisAvailable = false;
     });
 
     redisClient.on('close', () => {
-      console.log('⚠️  Redis connection closed');
+      // Only log if it was previously available
+      if (redisAvailable) {
+        console.log('⚠️  Redis connection closed');
+      }
       redisAvailable = false;
     });
 
@@ -126,10 +141,6 @@ if (CACHE_ENABLED && REDIS_URL) {
     console.log('⚠️  Redis unavailable. Local cache fallback active.');
     redisAvailable = false;
   }
-} else if (!CACHE_ENABLED) {
-  console.log('ℹ️  Cache disabled (ENABLE_CACHE=false)');
-} else {
-  console.log('⚠️  Redis URL not configured. Local cache fallback active.');
 }
 
 // ────────────────────────────────────────────────────────────────

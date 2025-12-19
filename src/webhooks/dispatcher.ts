@@ -46,14 +46,13 @@ class WebhookDispatcher {
 
   private async getWebhookSubscriptions(event: WebhookEvent) {
     try {
-      // Retrieve from SystemConfig
-      const config = await prisma.systemConfig.findUnique({
-        where: { configKey: `webhook_subscriptions_${event}` }
-      });
-
-      if (!config) return [];
-
-      const subscriptions = JSON.parse(config.configValue);
+      // For now, use environment variable or hardcoded config
+      // In a production system, you would store this in a proper config management system
+      const webhookConfig = process.env.WEBHOOK_SUBSCRIPTIONS 
+        ? JSON.parse(process.env.WEBHOOK_SUBSCRIPTIONS)
+        : {};
+      
+      const subscriptions = webhookConfig[event] || [];
       return Array.isArray(subscriptions) ? subscriptions : [];
     } catch (error) {
       console.error('Failed to get webhook subscriptions:', error);
