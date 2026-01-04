@@ -1,0 +1,414 @@
+// src/controllers/analytics.controller.ts
+import { Request, Response } from 'express';
+import { prisma } from '../config/database';
+import { successResponse, errorResponse } from '../utils/response.util';
+import { Prisma } from '@prisma/client';
+
+/**
+ * Get department budget summary
+ */
+export async function getDepartmentSummary(req: Request, res: Response) {
+  try {
+    const { department } = req.params;
+    const { fiscalYear, fiscalPeriod } = req.query;
+
+    // Build filter (using new schema field names)
+    const where: Prisma.budget_requestWhereInput = {
+      department_id: department || req.user?.department,
+      is_deleted: false
+    };
+
+    // Get aggregate statistics
+    const [
+          totalRequests,
+          pendingRequests,
+          approvedRequests,
+          rejectedRequests,
+          totalRequestedAmount,
+          totalApprovedAmount
+        ] = await Promise.all([
+          prisma.budget_request.count({ where }),
+          prisma.budget_request.count({ where: { ...where, status: 'PENDING' } }),
+          prisma.budget_request.count({ where: { ...where, status: 'APPROVED' } }),
+          prisma.budget_request.count({ where: { ...where, status: 'REJECTED' } }),
+          prisma.budget_request.aggregate({
+            where,
+            _sum: { total_amount: true }
+          }),
+          prisma.budget_request.aggregate({
+            where: { ...where, status: 'APPROVED' },
+            _sum: { total_amount: true }
+          })
+        ]);
+
+        // Calculate approval rate
+    const approvalRate = totalRequests > 0 
+      ? ((approvedRequests / totalRequests) * 100).toFixed(2)
+      : '0.00';
+
+    const summary = {
+      department: department || req.user?.department,
+      fiscalYear: fiscalYear || 'All',
+      fiscalPeriod: fiscalPeriod || 'All',
+      requests: {
+        total: totalRequests,
+        pending: pendingRequests,
+        approved: approvedRequests,
+        rejected: rejectedRequests
+      },
+      amounts: {
+        totalRequested: Number(totalRequestedAmount._sum.total_amount) || 0,
+            totalApproved: Number(totalApprovedAmount._sum.total_amount) || 0
+      },
+      metrics: {
+        approvalRate: `${approvalRate}%`,
+        averageRequestAmount: totalRequests > 0 
+          ? ((Number(totalRequestedAmount._sum.total_amount) || 0) / totalRequests).toFixed(2)
+          : '0.00',
+        averageApprovalAmount: approvedRequests > 0
+          ? ((Number(totalApprovedAmount._sum.total_amount) || 0) / approvedRequests).toFixed(2)
+          : '0.00'
+      }
+    };
+
+    return successResponse(res, summary, 'Department summary retrieved successfully');
+  } catch (error) {
+    console.error('Error fetching department summary:', error);
+    return errorResponse(res, 'Failed to retrieve department summary');
+  }
+}
+
+/**
+ * Get spending trends over time
+ */
+export async function getSpendingTrends(req: Request, res: Response) {
+  try {
+    const { department, startDate, endDate, groupBy = 'month' } = req.query;
+
+    // Build filter
+    const where: Prisma.budget_requestWhereInput = {
+      is_deleted: false,
+      status: 'APPROVED'
+    };
+
+    if (department) {
+      where.department_id = department as string;
+    } else if (req.user?.role !== 'SuperAdmin') {
+      where.department_id = req.user?.department;
+    }
+
+    if (startDate) {
+      where.created_at = {
+        gte: new Date(startDate as string)
+      };
+    }
+
+    if (endDate) {
+      if (where.created_at && typeof where.created_at === 'object' && 'gte' in where.created_at) {
+        where.created_at = {
+          gte: where.created_at.gte,
+          lte: new Date(endDate as string)
+        };
+      } else {
+        where.created_at = {
+          lte: new Date(endDate as string)
+        };
+      }
+    }
+
+    // Get requests grouped by period
+    const requests = await prisma.budget_request.findMany({
+      where,
+      select: {
+        created_at: true,
+        total_amount: true,
+        department_id: true
+      },
+      orderBy: { created_at: 'asc' }
+    });
+
+    // Group by time period
+    const trends = requests.reduce((acc: any[], request) => {
+      const date = new Date(request.created_at);
+      let period: string;
+
+      if (groupBy === 'day') {
+        period = date.toISOString().split('T')[0];
+      } else if (groupBy === 'week') {
+        const weekStart = new Date(date);
+        weekStart.setDate(date.getDate() - date.getDay());
+        period = weekStart.toISOString().split('T')[0];
+      } else if (groupBy === 'quarter') {
+        const quarter = Math.floor(date.getMonth() / 3) + 1;
+        period = `${date.getFullYear()}-Q${quarter}`;
+      } else if (groupBy === 'year') {
+        period = date.getFullYear().toString();
+      } else {
+        // Default: month
+        period = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`;
+      }
+
+      const existing = acc.find(item => item.period === period);
+      if (existing) {
+        existing.requestCount++;
+        existing.totalRequested += Number(request.total_amount);
+      } else {
+        acc.push({
+          period,
+          requestCount: 1,
+          totalRequested: Number(request.total_amount)
+        });
+      }
+
+      return acc;
+    }, []);
+
+    const result = {
+      department: department || 'All',
+      groupBy,
+      trends
+    };
+
+    return successResponse(res, result, 'Spending trends retrieved successfully');
+  } catch (error) {
+    console.error('Error fetching spending trends:', error);
+    return errorResponse(res, 'Failed to retrieve spending trends');
+  }
+}
+
+/**
+ * Get approval metrics and performance
+ */
+export async function getApprovalMetrics(req: Request, res: Response) {
+  try {
+    const { department, startDate, endDate } = req.query;
+
+    // Build filter
+    const where: Prisma.budget_requestWhereInput = {
+      is_deleted: false
+    };
+
+    if (department) {
+      where.department_id = department as string;
+    } else if (req.user?.role !== 'SuperAdmin') {
+      where.department_id = req.user?.department;
+    }
+
+    if (startDate) {
+      where.created_at = {
+        gte: new Date(startDate as string)
+      };
+    }
+
+    if (endDate) {
+      if (where.created_at && typeof where.created_at === 'object' && 'gte' in where.created_at) {
+        where.created_at = {
+          gte: where.created_at.gte,
+          lte: new Date(endDate as string)
+        };
+      } else {
+        where.created_at = {
+          lte: new Date(endDate as string)
+        };
+      }
+    }
+
+    // Get approval statistics
+    const [
+      approvedRequests,
+      rejectedRequests,
+      pendingRequests
+    ] = await Promise.all([
+      prisma.budget_request.findMany({
+        where: { ...where, status: 'APPROVED' },
+        select: {
+          created_at: true,
+          approved_at: true,
+          total_amount: true
+        }
+      }),
+      prisma.budget_request.findMany({
+        where: { ...where, status: 'REJECTED' },
+        select: {
+          created_at: true,
+          rejected_at: true,
+          total_amount: true
+        }
+      }),
+      prisma.budget_request.count({
+        where: { ...where, status: 'PENDING' }
+      })
+    ]);
+
+    // Calculate average approval time
+    let totalApprovalTime = 0;
+    let approvalTimeCount = 0;
+
+    approvedRequests.forEach(req => {
+      if (req.approved_at) {
+        const timeToApprove = req.approved_at.getTime() - req.created_at.getTime();
+        totalApprovalTime += timeToApprove;
+        approvalTimeCount++;
+      }
+    });
+
+    const avgApprovalTimeMs = approvalTimeCount > 0 
+      ? totalApprovalTime / approvalTimeCount
+      : 0;
+    const avgApprovalTimeHours = (avgApprovalTimeMs / (1000 * 60 * 60)).toFixed(2);
+
+    // Calculate average rejection time
+    let totalRejectionTime = 0;
+    let rejectionTimeCount = 0;
+
+    rejectedRequests.forEach(req => {
+      if (req.rejected_at) {
+        const timeToReject = req.rejected_at.getTime() - req.created_at.getTime();
+        totalRejectionTime += timeToReject;
+        rejectionTimeCount++;
+      }
+    });
+
+    const avgRejectionTimeMs = rejectionTimeCount > 0
+      ? totalRejectionTime / rejectionTimeCount
+      : 0;
+    const avgRejectionTimeHours = (avgRejectionTimeMs / (1000 * 60 * 60)).toFixed(2);
+
+    // Calculate approval rate by amount
+    const totalApprovedAmount = approvedRequests.reduce((sum, req) => 
+      sum + Number(req.total_amount), 0);
+    const totalRejectedAmount = rejectedRequests.reduce((sum, req) => 
+      sum + Number(req.total_amount), 0);
+    const totalAmount = totalApprovedAmount + totalRejectedAmount;
+
+    const approvalRateByAmount = totalAmount > 0
+      ? ((totalApprovedAmount / totalAmount) * 100).toFixed(2)
+      : '0.00';
+
+    const metrics = {
+      counts: {
+        approved: approvedRequests.length,
+        rejected: rejectedRequests.length,
+        pending: pendingRequests
+      },
+      rates: {
+        approvalRate: approvedRequests.length + rejectedRequests.length > 0
+          ? ((approvedRequests.length / (approvedRequests.length + rejectedRequests.length)) * 100).toFixed(2) + '%'
+          : '0.00%',
+        rejectionRate: approvedRequests.length + rejectedRequests.length > 0
+          ? ((rejectedRequests.length / (approvedRequests.length + rejectedRequests.length)) * 100).toFixed(2) + '%'
+          : '0.00%',
+        approvalRateByAmount: approvalRateByAmount + '%'
+      },
+      timing: {
+        avgApprovalTimeHours: parseFloat(avgApprovalTimeHours),
+        avgRejectionTimeHours: parseFloat(avgRejectionTimeHours),
+        avgResponseTimeHours: approvalTimeCount + rejectionTimeCount > 0
+          ? ((totalApprovalTime + totalRejectionTime) / (approvalTimeCount + rejectionTimeCount) / (1000 * 60 * 60)).toFixed(2)
+          : '0.00'
+      },
+      amounts: {
+        totalApproved: totalApprovedAmount,
+        totalRejected: totalRejectedAmount,
+            avgApprovedAmount: approvedRequests.length > 0
+          ? (totalApprovedAmount / approvedRequests.length).toFixed(2)
+          : '0.00'
+      }
+    };
+
+    return successResponse(res, metrics, 'Approval metrics retrieved successfully');
+  } catch (error) {
+    console.error('Error fetching approval metrics:', error);
+    return errorResponse(res, 'Failed to retrieve approval metrics');
+  }
+}
+
+/**
+ * Get top requesters
+ */
+export async function getTopRequesters(req: Request, res: Response) {
+  try {
+    const { department, limit = 10 } = req.query;
+
+    // Build filter
+    const where: Prisma.budget_requestWhereInput = {
+      is_deleted: false
+    };
+
+    if (department) {
+      where.department_id = department as string;
+    } else if (req.user?.role !== 'SuperAdmin') {
+      where.department_id = req.user?.department;
+    }
+
+    const requests = await prisma.budget_request.groupBy({
+      by: ['requested_by'],
+      where,
+      _count: { id: true },
+      _sum: { total_amount: true },
+      orderBy: {
+        _count: { id: 'desc' }
+      },
+      take: parseInt(limit as string)
+    });
+
+    const topRequesters = requests.map(requester => ({
+      userId: requester.requested_by,
+      requestCount: requester._count.id,
+      totalRequested: Number(requester._sum.total_amount) || 0,
+      avgRequestAmount: requester._count.id > 0
+        ? ((Number(requester._sum.total_amount) || 0) / requester._count.id).toFixed(2)
+        : '0.00'
+    }));
+
+    return successResponse(res, topRequesters, 'Top requesters retrieved successfully');
+  } catch (error) {
+    console.error('Error fetching top requesters:', error);
+    return errorResponse(res, 'Failed to retrieve top requesters');
+  }
+}
+
+/**
+ * Get category breakdown
+ */
+export async function getCategoryBreakdown(req: Request, res: Response) {
+  try {
+    const { department } = req.query;
+
+    // Build filter
+    const where: Prisma.budget_requestWhereInput = {
+      is_deleted: false,
+      status: 'APPROVED'
+    };
+
+    if (department) {
+      where.department_id = department as string;
+    } else if (req.user?.role !== 'SuperAdmin') {
+      where.department_id = req.user?.department;
+    }
+
+    const types = await prisma.budget_request.groupBy({
+      by: ['request_type'],
+      where,
+      _count: { id: true },
+      _sum: { total_amount: true },
+      orderBy: {
+        _sum: { total_amount: 'desc' }
+      }
+    });
+
+    const breakdown = types.map(type => ({
+      requestType: type.request_type || 'REGULAR',
+      requestCount: type._count.id,
+      totalAmount: Number(type._sum.total_amount) || 0,
+      avgAmount: type._count.id > 0
+        ? ((Number(type._sum.total_amount) || 0) / type._count.id).toFixed(2)
+        : '0.00'
+    }));
+
+    return successResponse(res, breakdown, 'Category breakdown retrieved successfully');
+  } catch (error) {
+    console.error('Error fetching category breakdown:', error);
+    return errorResponse(res, 'Failed to retrieve category breakdown');
+  }
+}

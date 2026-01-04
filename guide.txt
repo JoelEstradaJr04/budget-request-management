@@ -1,0 +1,2 @@
+pnpm install:all
+pnpm dev
