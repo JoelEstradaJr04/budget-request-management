@@ -1,36 +1,138 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# Budget Request Management System
+
+A full-stack budget request management application built as a monorepo with separate frontend and backend services.
+
+## Architecture
+
+This project follows a monorepo structure:
+
+- **frontend/** - Next.js 15 application (deployed on Vercel)
+- **backend/** - Express.js API server (deployed on Railway)
+
+## Tech Stack
+
+### Frontend
+- Next.js 15.3
+- React 19
+- TypeScript
+- Tailwind CSS
+- Chart.js
+- React Hook Form
+
+### Backend
+- Express.js 5
+- TypeScript
+- Prisma ORM
+- PostgreSQL
+- JWT Authentication
 
 ## Getting Started
 
-First, run the development server:
+### Prerequisites
+
+- Node.js 18+
+- pnpm 10+
+- PostgreSQL database
+
+### Installation
+
+Install all dependencies for both frontend and backend:
 
 ```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
+pnpm install:all
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+Or run the setup script which also initializes the database:
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+```bash
+pnpm setup
+```
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+### Development
 
-## Learn More
+Run both frontend and backend concurrently:
 
-To learn more about Next.js, take a look at the following resources:
+```bash
+pnpm dev
+```
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+Or run them separately:
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+```bash
+# Terminal 1 - Frontend
+pnpm dev:frontend
 
-## Deploy on Vercel
+# Terminal 2 - Backend
+pnpm dev:backend
+```
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+The frontend will run on [http://localhost:3001](http://localhost:3001)  
+The backend API will run on [http://localhost:4005](http://localhost:4005)
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+### Environment Variables
+
+1. **Frontend**: Copy `frontend/.env.example` to `frontend/.env`
+2. **Backend**: Copy `backend/.env.example` to `backend/.env`
+
+Configure the variables according to your environment.
+
+## Building
+
+```bash
+# Build frontend
+pnpm build:frontend
+
+# Build backend
+pnpm build:backend
+
+# Build both
+pnpm build
+```
+
+## Deployment
+
+### Frontend (Vercel)
+The frontend is configured for deployment on Vercel. The `vercel.json` configuration is already set up.
+
+### Backend (Railway)
+The backend is configured for deployment on Railway. The `railway.json` configuration is already set up.
+
+## Project Structure
+
+```
+budget-request-monorepo/
+├── frontend/              # Next.js frontend application
+│   ├── app/              # Next.js app directory
+│   ├── public/           # Static assets
+│   └── package.json
+├── backend/              # Express.js backend API
+│   ├── src/              # Source code
+│   │   ├── controllers/  # Route controllers
+│   │   ├── middlewares/  # Express middlewares
+│   │   ├── routes/       # API routes
+│   │   ├── services/     # Business logic
+│   │   ├── types/        # TypeScript types
+│   │   └── utils/        # Utility functions
+│   ├── prisma/           # Database schema & migrations
+│   └── package.json
+├── package.json          # Root package.json (workspace)
+├── pnpm-workspace.yaml   # PNPM workspace configuration
+├── railway.json          # Railway deployment config
+└── vercel.json           # Vercel deployment config
+```
+
+## Scripts
+
+- `pnpm dev` - Run both frontend and backend in development mode
+- `pnpm dev:frontend` - Run only frontend
+- `pnpm dev:backend` - Run only backend
+- `pnpm build` - Build frontend for production
+- `pnpm build:frontend` - Build only frontend
+- `pnpm build:backend` - Build only backend
+- `pnpm install:all` - Install all dependencies
+- `pnpm setup` - Complete setup including database migrations
+
+## License
+
+Private
+
