@@ -339,6 +339,27 @@
   cursor: not-allowed !important;
 }
 
+.showItemsBtn {
+  background: #2563eb !important;
+  color: white !important;
+  border: none !important;
+  border-radius: 6px !important;
+  padding: 0.75rem 1.5rem !important;
+  cursor: pointer !important;
+  display: inline-flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  gap: 0.5rem !important;
+  font-size: 0.9rem !important;
+  font-weight: 500 !important;
+  transition: background 0.15s ease !important;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1) !important;
+}
+
+.showItemsBtn:hover {
+  background: #1d4ed8 !important;
+}
+
 /* ---------- File Upload Section ---------- */
 .fileUploadSection {
   background: #f8f9fa !important;
@@ -574,4 +595,128 @@
   .modalButtons button {
     width: 100% !important;
   }
+}
+
+/* ---------- PR Linking Section ---------- */
+.itemsControls {
+  display: flex !important;
+  align-items: center !important;
+  gap: 1rem !important;
+}
+
+.prLinkToggle {
+  display: flex !important;
+  align-items: center !important;
+  gap: 0.5rem !important;
+  cursor: pointer !important;
+  font-size: 0.9rem !important;
+  color: var(--secondary-text-color) !important;
+}
+
+.prLinkToggle input[type="checkbox"] {
+  cursor: pointer !important;
+  width: 16px !important;
+  height: 16px !important;
+}
+
+.prLinkSection {
+  background: #f8f9fa !important;
+  border: 1px solid var(--border-color) !important;
+  border-radius: 8px !important;
+  padding: 1rem !important;
+  margin-top: 1rem !important;
+}
+
+.prSearchContainer {
+  display: flex !important;
+  gap: 0.5rem !important;
+}
+
+.prSearchContainer .formInput {
+  flex: 1 !important;
+}
+
+.prSearchBtn {
+  background: var(--primary-color) !important;
+  color: var(--button-font-color) !important;
+  border: none !important;
+  border-radius: 6px !important;
+  padding: 0.5rem 1rem !important;
+  cursor: pointer !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  font-size: 1rem !important;
+  transition: background 0.15s ease !important;
+}
+
+.prSearchBtn:hover {
+  background: var(--primary-hover-color) !important;
+}
+
+.field-note {
+  display: block !important;
+  font-size: 0.85rem !important;
+  color: var(--secondary-text-color) !important;
+  margin-top: 0.25rem !important;
+  font-style: italic !important;
+}
+
+/* ---------- Enhanced Item Fields ---------- */
+.itemHeader {
+  display: flex !important;
+  align-items: center !important;
+  justify-content: space-between !important;
+  margin-bottom: 0.75rem !important;
+  padding-bottom: 0.5rem !important;
+  border-bottom: 1px solid var(--border-color) !important;
+}
+
+.itemHeader h4 {
+  margin: 0 !important;
+  font-size: 1rem !important;
+  font-weight: 600 !important;
+  color: var(--primary-text-color) !important;
+}
+
+.itemGrid {
+  display: grid !important;
+  grid-template-columns: repeat(3, 1fr) !important;
+  gap: 1rem !important;
+}
+
+.itemField.fullWidth {
+  grid-column: 1 / -1 !important;
+}
+
+.itemField textarea {
+  width: 100% !important;
+  padding: 0.5rem !important;
+  border: 1px solid var(--border-color) !important;
+  border-radius: 6px !important;
+  font-family: var(--font-sans) !important;
+  font-size: 0.9rem !important;
+  resize: vertical !important;
+  min-height: 60px !important;
+}
+
+.formInput.calculated {
+  background-color: #f3f4f6 !important;
+  color: var(--secondary-text-color) !important;
+  font-weight: 600 !important;
+  cursor: not-allowed !important;
+}
+
+/* ---------- Item Container Updates ---------- */
+.itemContainer {
+  background: #f8f9fa !important;
+  border: 1px solid var(--border-color) !important;
+  border-radius: 8px !important;
+  padding: 1.5rem !important;
+  margin-bottom: 1.5rem !important;
+  position: relative !important;
+}
+
+.itemContainer:hover {
+  box-shadow: var(--box-shadow) !important;
 }

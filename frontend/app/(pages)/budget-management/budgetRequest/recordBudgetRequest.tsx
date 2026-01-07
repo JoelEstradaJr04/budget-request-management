@@ -13,6 +13,17 @@ interface BudgetItem {
   description?: string;
   requested_amount: number;
   notes?: string;
+  // Enhanced item fields
+  item_code?: string;
+  item_name?: string;
+  department?: string;
+  unit_measure?: string;
+  supplier_code?: string;
+  supplier_name?: string;
+  supplier_unit_measure?: string;
+  conversion_factor?: number;
+  unit_price?: number;
+  quantity?: number;
 }
 
 interface NewBudgetRequest {
@@ -70,10 +81,13 @@ const AddBudgetRequest: React.FC<AddBudgetRequestProps> = ({
 
   const [items, setItems] = useState<BudgetItem[]>([]);
   const [showItems, setShowItems] = useState(false);
+  const [isPRLinked, setIsPRLinked] = useState(false);
+  const [prReferenceCode, setPrReferenceCode] = useState('');
   const [supportingDocuments, setSupportingDocuments] = useState<File[]>([]);
   const [dragOver, setDragOver] = useState(false);
   const [validationErrors, setValidationErrors] = useState<Record<string, string>>({});
   const [isFormValid, setIsFormValid] = useState(false);
+  const [requestDate] = useState(new Date().toISOString().split('T')[0]);
 
   const validationRules: Record<FieldName, ValidationRule> = {
     purpose: { 
@@ -221,7 +235,17 @@ const AddBudgetRequest: React.FC<AddBudgetRequestProps> = ({
       category_id: undefined,
       description: '',
       requested_amount: 0,
-      notes: ''
+      notes: '',
+      item_code: '',
+      item_name: '',
+      department: formData.department,
+      unit_measure: '',
+      supplier_code: '',
+      supplier_name: '',
+      supplier_unit_measure: '',
+      conversion_factor: 1,
+      unit_price: 0,
+      quantity: 0
     }]);
   };
 
@@ -233,6 +257,15 @@ const AddBudgetRequest: React.FC<AddBudgetRequestProps> = ({
     setItems(prev => {
       const updated = [...prev];
       updated[index] = { ...updated[index], [field]: value };
+      
+      // Auto-calculate requested_amount (subtotal) when quantity or unit_price changes
+      if (field === 'quantity' || field === 'unit_price') {
+        const item = updated[index];
+        const qty = field === 'quantity' ? Number(value) : (item.quantity || 0);
+        const price = field === 'unit_price' ? Number(value) : (item.unit_price || 0);
+        updated[index].requested_amount = qty * price;
+      }
+      
       return updated;
     });
   };
@@ -449,6 +482,21 @@ const AddBudgetRequest: React.FC<AddBudgetRequestProps> = ({
                 </div>
                 
                 <div className="formField formFieldHalf">
+                  <label htmlFor="requestDate">Date of Request</label>
+                  <input
+                    type="text"
+                    id="requestDate"
+                    name="requestDate"
+                    value={formatDate(requestDate)}
+                    readOnly
+                    className="formInput"
+                  />
+                  <span className="autofill-note">Auto-filled with current date</span>
+                </div>
+              </div>
+
+              <div className="formRow">
+                <div className="formField formFieldHalf">
                   <label htmlFor="fiscalYear">Fiscal Year</label>
                   <input
                     type="number"
@@ -661,48 +709,114 @@ const AddBudgetRequest: React.FC<AddBudgetRequestProps> = ({
               <div className="itemsSection">
                 <div className="itemsHeader">
                   <h3>Budget Items (Optional)</h3>
-                  <button
-                    type="button"
-                    className="itemsToggle"
-                    onClick={() => setShowItems(!showItems)}
-                  >
-                    <i className={`ri-${showItems ? 'eye-off' : 'eye'}-line`} />
-                    {showItems ? 'Hide Items' : 'Add Items'}
-                  </button>
+                  <div className="itemsControls">
+                    <label className="prLinkToggle">
+                      <input
+                        type="checkbox"
+                        checked={isPRLinked}
+                        onChange={(e) => setIsPRLinked(e.target.checked)}
+                      />
+                      <span>Link to Purchase Request</span>
+                    </label>
+                    <button
+                      type="button"
+                      className="itemsToggle"
+                      onClick={() => setShowItems(!showItems)}
+                    >
+                      <i className={`ri-${showItems ? 'eye-off' : 'eye'}-line`} />
+                      {showItems ? 'Hide Items' : 'Add Items'}
+                    </button>
+                  </div>
                 </div>
 
-                {showItems && (
+                {isPRLinked && (
+                  <div className="prLinkSection">
+                    <div className="formField">
+                      <label htmlFor="prReferenceCode">Purchase Request Code<span className='requiredTags'> *</span></label>
+                      <div className="prSearchContainer">
+                        <input
+                          type="text"
+                          id="prReferenceCode"
+                          value={prReferenceCode}
+                          onChange={(e) => setPrReferenceCode(e.target.value)}
+                          placeholder="Enter PR code (e.g., PR-2024-001)"
+                          className="formInput"
+                        />
+                        <button type="button" className="prSearchBtn" title="Search PR">
+                          <i className="ri-search-line" />
+                        </button>
+                      </div>
+                      <span className="field-note">Enter the Purchase Request code to link items</span>
+                    </div>
+                  </div>
+                )}
+
+                {showItems && !isPRLinked && (
                   <>
                     {items.map((item, index) => (
                       <div key={index} className="itemContainer">
-                        <button
-                          type="button"
-                          className="removeItemBtn"
-                          onClick={() => removeItem(index)}
-                          disabled={items.length === 1}
-                          title="Remove Item"
-                        >
-                          <i className="ri-close-line" />
-                        </button>
+                        <div className="itemHeader">
+                          <h4>Item #{index + 1}</h4>
+                          <button
+                            type="button"
+                            className="removeItemBtn"
+                            onClick={() => removeItem(index)}
+                            disabled={items.length === 1}
+                            title="Remove Item"
+                          >
+                            <i className="ri-close-line" />
+                          </button>
+                        </div>
 
                         <div className="itemGrid">
                           <div className="itemField">
-                            <label>Description<span className='requiredTags'> *</span></label>
+                            <label>Item Code</label>
                             <input
                               type="text"
-                              value={item.description || ''}
-                              onChange={(e) => updateItem(index, 'description', e.target.value)}
-                              placeholder="Enter item description"
+                              value={item.item_code || ''}
+                              onChange={(e) => updateItem(index, 'item_code', e.target.value)}
+                              placeholder="Enter item code or 'N/A'"
+                            />
+                          </div>
+
+                          <div className="itemField">
+                            <label>Item Name<span className='requiredTags'> *</span></label>
+                            <input
+                              type="text"
+                              value={item.item_name || ''}
+                              onChange={(e) => updateItem(index, 'item_name', e.target.value)}
+                              placeholder="Enter item name"
                               required={showItems}
                             />
                           </div>
 
                           <div className="itemField">
-                            <label>Requested Amount<span className='requiredTags'> *</span></label>
+                            <label>Department</label>
+                            <input
+                              type="text"
+                              value={item.department || formData.department}
+                              onChange={(e) => updateItem(index, 'department', e.target.value)}
+                              placeholder="Department"
+                            />
+                          </div>
+
+                          <div className="itemField">
+                            <label>Unit Measure<span className='requiredTags'> *</span></label>
+                            <input
+                              type="text"
+                              value={item.unit_measure || ''}
+                              onChange={(e) => updateItem(index, 'unit_measure', e.target.value)}
+                              placeholder="e.g., pcs, kg, L"
+                              required={showItems}
+                            />
+                          </div>
+
+                          <div className="itemField">
+                            <label>Quantity<span className='requiredTags'> *</span></label>
                             <input
                               type="number"
-                              value={item.requested_amount}
-                              onChange={(e) => updateItem(index, 'requested_amount', parseFloat(e.target.value) || 0)}
+                              value={item.quantity || 0}
+                              onChange={(e) => updateItem(index, 'quantity', parseFloat(e.target.value) || 0)}
                               min="0"
                               step="0.01"
                               required={showItems}
@@ -711,12 +825,56 @@ const AddBudgetRequest: React.FC<AddBudgetRequestProps> = ({
                           </div>
 
                           <div className="itemField">
-                            <label>Notes</label>
+                            <label>Unit Price<span className='requiredTags'> *</span></label>
+                            <input
+                              type="number"
+                              value={item.unit_price || 0}
+                              onChange={(e) => updateItem(index, 'unit_price', parseFloat(e.target.value) || 0)}
+                              min="0"
+                              step="0.01"
+                              required={showItems}
+                              placeholder="0.00"
+                            />
+                          </div>
+
+                          <div className="itemField">
+                            <label>Subtotal</label>
+                            <input
+                              type="number"
+                              value={item.requested_amount}
+                              readOnly
+                              className="formInput calculated"
+                              placeholder="Auto-calculated"
+                            />
+                          </div>
+
+                          <div className="itemField">
+                            <label>Supplier Code</label>
                             <input
                               type="text"
-                              value={item.notes || ''}
-                              onChange={(e) => updateItem(index, 'notes', e.target.value)}
-                              placeholder="Additional notes (optional)"
+                              value={item.supplier_code || ''}
+                              onChange={(e) => updateItem(index, 'supplier_code', e.target.value)}
+                              placeholder="Supplier code or 'N/A'"
+                            />
+                          </div>
+
+                          <div className="itemField">
+                            <label>Supplier Name</label>
+                            <input
+                              type="text"
+                              value={item.supplier_name || ''}
+                              onChange={(e) => updateItem(index, 'supplier_name', e.target.value)}
+                              placeholder="Enter supplier name"
+                            />
+                          </div>
+
+                          <div className="itemField fullWidth">
+                            <label>Description / Notes</label>
+                            <textarea
+                              value={item.description || ''}
+                              onChange={(e) => updateItem(index, 'description', e.target.value)}
+                              placeholder="Additional details about this item (optional)"
+                              rows={2}
                             />
                           </div>
                         </div>

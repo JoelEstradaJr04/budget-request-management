@@ -10,7 +10,8 @@ import { formatDate, formatDateTime } from '../../../utils/dateFormatter';
 import Loading from '../../../Components/loading';
 import { showSuccess, showError } from '../../../utils/Alerts';
 import FilterDropdown, { FilterSection } from "../../../Components/filter";
-import AddBudgetRequest from './addBudgetRequest';
+import AddBudgetRequest from './recordBudgetRequest';
+import EditBudgetRequest from './editBudgetRequest';
 import ViewBudgetRequest from './viewBudgetRequest';
 import AuditTrailBudgetRequest from './auditTrailBudgetRequest';
 import budgetRequestService, { 
@@ -41,6 +42,7 @@ interface BudgetRequest {
   requested_for?: string;
   request_date: string;
   total_amount: number;
+  approved_amount?: number;
   status: 'PENDING' | 'APPROVED' | 'REJECTED' | 'ADJUSTED' | 'CLOSED';
   purpose?: string;
   remarks?: string;
@@ -52,6 +54,7 @@ interface BudgetRequest {
   rejected_at?: string;
   rejection_reason?: string;
   items?: BudgetRequestItem[];
+  itemAllocations?: any[];
   created_at: string;
   updated_at?: string;
   is_deleted: boolean;
@@ -68,11 +71,9 @@ const BudgetRequestPage = () => {
   const [dateTo, setDateTo] = useState("");
   const [currentPage, setCurrentPage] = useState(1);
   const [pageSize, setPageSize] = useState(10);
-  const [showAddModal, setShowAddModal] = useState(false);
-  const [showViewModal, setShowViewModal] = useState(false);
-  const [showAuditModal, setShowAuditModal] = useState(false);
-  const [selectedRequestForAudit, setSelectedRequestForAudit] = useState<BudgetRequest | null>(null);
-  const [selectedRequest, setSelectedRequest] = useState<BudgetRequest | null>(null);
+  const [isModalOpen, setIsModalOpen] = useState(false);
+  const [modalContent, setModalContent] = useState<React.ReactNode>(null);
+  const [activeRow, setActiveRow] = useState<BudgetRequest | null>(null);
   const [availableCategories] = useState([
     'Operations',
     'Maintenance',
@@ -177,9 +178,34 @@ const BudgetRequestPage = () => {
     fetchData();
   }, [currentPage, pageSize, search, statusFilter, categoryFilter, dateFrom, dateTo, sortField, sortOrder]);
 
+  // Helper function to get primary category from items
+  const getBudgetCategory = (items?: BudgetRequestItem[]) => {
+    if (!items || items.length === 0) return 'Uncategorized';
+    
+    // Get unique categories from items
+    const categories = items
+      .map(item => item.category_id)
+      .filter(cat => cat !== null && cat !== undefined);
+    
+    if (categories.length === 0) return 'Uncategorized';
+    
+    // Map category IDs to names (you may need to adjust based on your category mapping)
+    const categoryNames = availableCategories;
+    const firstCategoryId = categories[0];
+    
+    // If all items have the same category, return that category
+    if (categories.every(cat => cat === firstCategoryId)) {
+      return categoryNames[firstCategoryId - 1] || 'Other';
+    }
+    
+    // If items have different categories, return "Multiple"
+    return 'Multiple Categories';
+  };
+
   // Filter and sort logic
   const filteredData = data.filter((item: BudgetRequest) => {
     const searchLower = search.toLowerCase();
+    const categoryName = getBudgetCategory(item.items);
 
     const matchesSearch = search === '' || 
       (item.purpose && item.purpose.toLowerCase().includes(searchLower)) ||
@@ -187,6 +213,7 @@ const BudgetRequestPage = () => {
       item.status.toLowerCase().includes(searchLower) ||
       item.requested_by.toLowerCase().includes(searchLower) ||
       (item.department_name && item.department_name.toLowerCase().includes(searchLower)) ||
+      categoryName.toLowerCase().includes(searchLower) ||
       item.total_amount.toString().includes(searchLower) ||
       item.request_code.toLowerCase().includes(searchLower);
 
@@ -367,7 +394,7 @@ const BudgetRequestPage = () => {
         }
         
         showSuccess('Budget request created successfully', 'Success');
-        setShowAddModal(false);
+        closeModal();
       } else {
         showError(response.error || 'Failed to create budget request', 'Error');
       }
@@ -379,6 +406,103 @@ const BudgetRequestPage = () => {
     }
   };
 
+  const handleUpdate = async (id: number, formData: any) => {
+    console.log('handleUpdate called with:', id, formData);
+    
+    try {
+      setLoading(true);
+      
+      const response = await budgetRequestService.update(id, formData);
+      
+      if (response.success) {
+        // Refresh the list
+        const listResponse = await budgetRequestService.list({
+          page: currentPage,
+          limit: pageSize
+        });
+        
+        if (listResponse.success && listResponse.data) {
+          setData(listResponse.data);
+        }
+        
+        showSuccess('Budget request updated successfully', 'Success');
+        closeModal();
+      } else {
+        showError(response.error || 'Failed to update budget request', 'Error');
+      }
+    } catch (error: any) {
+      console.error('Error updating budget request:', error);
+      showError(error.message || 'Failed to update budget request', 'Error');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+
+  // Modal Manager Functions
+  const openModal = (mode: 'view' | 'add' | 'edit' | 'audit', rowData?: BudgetRequest) => {
+    let content;
+
+    switch (mode) {
+      case 'view':
+        content = (
+          <ViewBudgetRequest
+            request={rowData!}
+            onClose={closeModal}
+            onEdit={(request) => {
+              console.log('Edit request:', request);
+              closeModal();
+              // You can open edit modal here if needed
+            }}
+            onExport={(request) => {
+              console.log('Export request:', request);
+            }}
+            showActions={true}
+          />
+        );
+        break;
+      case 'add':
+        content = (
+          <AddBudgetRequest
+            onClose={closeModal}
+            onAddBudgetRequest={handleAddBudgetRequest}
+            currentUser="ftms_user"
+          />
+        );
+        break;
+      case 'audit':
+        content = (
+          <AuditTrailBudgetRequest
+            requestId={rowData!.request_code}
+            requestTitle={rowData!.purpose || 'Budget Request'}
+            onClose={closeModal}
+          />
+        );
+        break;
+      case 'edit':
+        content = (
+          <EditBudgetRequest
+            request={rowData!}
+            onClose={closeModal}
+            onUpdate={handleUpdate}
+          />
+        );
+        break;
+      default:
+        content = null;
+    }
+
+    setModalContent(content);
+    setActiveRow(rowData || null);
+    setIsModalOpen(true);
+  };
+
+  const closeModal = () => {
+    setIsModalOpen(false);
+    setModalContent(null);
+    setActiveRow(null);
+  };
+
 
   // Action handlers
   const handleView = async (item: BudgetRequest) => {
@@ -388,23 +512,19 @@ const BudgetRequestPage = () => {
       const response = await budgetRequestService.getById(item.id);
       
       if (response.success && response.data) {
-        console.log('Full budget request data received:', response.data);
-        console.log('itemAllocations:', response.data.itemAllocations);
-        setSelectedRequest(response.data);
-        setShowViewModal(true);
+        openModal('view', response.data);
       } else {
-        showError(response.error || 'Failed to load budget request details', 'Error');
+        showError('Failed to load budget request details', 'Error');
       }
     } catch (error: any) {
       console.error('Error fetching budget request details:', error);
-      showError(error.message || 'Failed to load budget request details', 'Error');
+      showError('Failed to load budget request details', 'Error');
     }
   };
 
   const handleEdit = (item: BudgetRequest) => {
     console.log('Edit:', item);
-    showSuccess('Edit functionality will be implemented', 'Info');
-    // Implement edit modal
+    openModal('edit', item);
   };
 
   const handleDelete = async (requestId: number) => {
@@ -491,7 +611,7 @@ const BudgetRequestPage = () => {
       setLoading(true);
       try {
         const approvalData: ApprovalDto = {
-          reviewNotes: 'Approved by Finance Admin'
+          rejection_reason: 'Approved by Finance Admin'
         };
         
         const response = await budgetRequestService.approve(requestId, approvalData);
@@ -537,7 +657,7 @@ const BudgetRequestPage = () => {
       setLoading(true);
       try {
         const rejectionData: RejectionDto = {
-          reviewNotes: reason
+          rejection_reason: reason
         };
         
         const response = await budgetRequestService.reject(requestId, rejectionData);
@@ -568,8 +688,7 @@ const BudgetRequestPage = () => {
     const handleAuditTrail = (requestId: number) => {
         const request = data.find(item => item.id === requestId);
         if (request) {
-            setSelectedRequestForAudit(request);
-            setShowAuditModal(true);
+            openModal('audit', request);
         }
     };
 
@@ -607,27 +726,29 @@ const BudgetRequestPage = () => {
         </div>
         
         <div className="settings">
-          {/* Search bar */}
-          <div className="revenue_searchBar">
-            <i className="ri-search-line" />
-            <input
-              className="searchInput"
-              type="text"
-              placeholder="Search requests..."
-              value={search}
-              onChange={(e) => setSearch(e.target.value)}
+          <div className="search-filter-container">
+            {/* Search bar */}
+            <div className="searchBar">
+              <i className="ri-search-line" />
+              <input
+                className="searchInput"
+                type="text"
+                placeholder="Search requests..."
+                value={search}
+                onChange={(e) => setSearch(e.target.value)}
+              />
+            </div>
+
+            <FilterDropdown
+              sections={filterSections}
+              onApply={handleFilterApply}
+              initialValues={{
+                dateRange: { from: dateFrom, to: dateTo },
+                status: statusFilter ? statusFilter.split(',') : [],
+                category: categoryFilter ? categoryFilter.split(',') : []
+              }}
             />
           </div>
-
-          <FilterDropdown
-            sections={filterSections}
-            onApply={handleFilterApply}
-            initialValues={{
-              dateRange: { from: dateFrom, to: dateTo },
-              status: statusFilter ? statusFilter.split(',') : [],
-              category: categoryFilter ? categoryFilter.split(',') : []
-            }}
-          />
 
           <div className="filters">
             {/* Export dropdown */}
@@ -649,8 +770,8 @@ const BudgetRequestPage = () => {
             </div>
 
             {/* Add New Request */}
-            <button onClick={() => setShowAddModal(true)} id="addRequest">
-                <i className="ri-add-line" /> New Request
+            <button onClick={() => openModal('add')} id="addButton" className="addButton">
+                <i className="ri-add-line" />New Request
             </button>
           </div>
         </div>
@@ -660,39 +781,42 @@ const BudgetRequestPage = () => {
             <table className="data-table">
               <thead>
                 <tr>
+                  <th onClick={() => handleSort('department_name')} className="sortable">
+                    Department
+                    {sortField === 'department_name' && (
+                      <i className={`ri-arrow-${sortOrder === 'asc' ? 'up' : 'down'}-line`} />
+                    )}
+                  </th>
                   <th onClick={() => handleSort('created_at')} className="sortable">
                     Request Date
                     {sortField === 'created_at' && (
                       <i className={`ri-arrow-${sortOrder === 'asc' ? 'up' : 'down'}-line`} />
                     )}
                   </th>
-                  <th onClick={() => handleSort('purpose')} className="sortable">
-                    Purpose
-                    {sortField === 'purpose' && (
+                  <th className="sortable">
+                    Budget Category
+                  </th>
+                  <th onClick={() => handleSort('total_amount')} className="sortable">
+                    Requested Amount
+                    {sortField === 'total_amount' && (
+                      <i className={`ri-arrow-${sortOrder === 'asc' ? 'up' : 'down'}-line`} />
+                    )}
+                  </th>
+                  <th onClick={() => handleSort('approved_amount')} className="sortable">
+                    Approved Amount
+                    {sortField === 'approved_amount' && (
                       <i className={`ri-arrow-${sortOrder === 'asc' ? 'up' : 'down'}-line`} />
                     )}
                   </th>
                   <th onClick={() => handleSort('request_type')} className="sortable">
-                    Type
+                    Requested Type
                     {sortField === 'request_type' && (
-                      <i className={`ri-arrow-${sortOrder === 'asc' ? 'up' : 'down'}-line`} />
-                    )}
-                  </th>
-                  <th onClick={() => handleSort('total_amount')} className="sortable">
-                    Amount
-                    {sortField === 'total_amount' && (
                       <i className={`ri-arrow-${sortOrder === 'asc' ? 'up' : 'down'}-line`} />
                     )}
                   </th>
                   <th onClick={() => handleSort('status')} className="sortable">
                     Status
                     {sortField === 'status' && (
-                      <i className={`ri-arrow-${sortOrder === 'asc' ? 'up' : 'down'}-line`} />
-                    )}
-                  </th>
-                  <th onClick={() => handleSort('requested_by')} className="sortable">
-                    Requested By
-                    {sortField === 'requested_by' && (
                       <i className={`ri-arrow-${sortOrder === 'asc' ? 'up' : 'down'}-line`} />
                     )}
                   </th>
@@ -711,29 +835,20 @@ const BudgetRequestPage = () => {
                     }}
                     style={{ cursor: 'pointer' }}
                   >
+                    <td>{item.department_name || 'N/A'}</td>
                     <td>{formatDate(item.created_at)}</td>
-                    <td>
-                      <div className="request-title">
-                        <strong title={(item.purpose && item.purpose.length > 30) ? item.purpose : undefined}>
-                            {item.purpose || 'No purpose specified'}
-                        </strong>
-                        <div 
-                            className="request-description" 
-                            title={(item.remarks && item.remarks.length > 60) ? item.remarks : undefined}
-                        >
-                            {item.remarks 
-                              ? (item.remarks.length > 60 
-                                ? `${item.remarks.substring(0, 60)}...` 
-                                : item.remarks)
-                              : 'No remarks'
-                            }
-                        </div>
-                      </div>
-                    </td>
-                    <td>
-                      <span className={`priority-badge priority-${item.request_type?.toLowerCase()}`}>
-                        {item.request_type}
-                      </span>
+                    <td><span className="category-badge">{getBudgetCategory(item.items)}</span></td>
+                    <td className="amount-cell">
+                      {item.approved_amount !== null && item.approved_amount !== undefined ? (
+                        <span className="approved-amount">
+                          ₱{Number(item.approved_amount).toLocaleString(undefined, { 
+                            minimumFractionDigits: 2, 
+                            maximumFractionDigits: 2 
+                          })}
+                        </span>
+                      ) : (
+                        <span className="not-approved">-</span>
+                      )}
                     </td>
                     <td className="amount-cell">
                       ₱{Number(item.total_amount).toLocaleString(undefined, { 
@@ -741,13 +856,18 @@ const BudgetRequestPage = () => {
                         maximumFractionDigits: 2 
                       })}
                     </td>
+                    <td>
+                      <span className={`priority-badge priority-${item.request_type?.toLowerCase()}`}>
+                        {item.request_type}
+                      </span>
+                    </td>
                     <td><StatusBadge status={item.status} /></td>
-                    <td>{item.requested_by}</td>
                     <td className="actionButtons">
                       <div className="actionButtonsContainer">
                         {getActionButtons(item)}
                       </div>
                     </td>
+                    
                   </tr>
                 ))}
               </tbody>
@@ -766,44 +886,8 @@ const BudgetRequestPage = () => {
           onPageSizeChange={setPageSize}
         />
 
-        {showAddModal && (
-            <AddBudgetRequest
-                onClose={() => setShowAddModal(false)}
-                onAddBudgetRequest={handleAddBudgetRequest}
-                currentUser="ftms_user" // Replace with actual user
-            />
-        )}
-
-        {showAuditModal && selectedRequestForAudit && (
-            <AuditTrailBudgetRequest
-                requestId={selectedRequestForAudit.request_code}
-                requestTitle={selectedRequestForAudit.purpose || 'Budget Request'}
-                onClose={() => {
-                setShowAuditModal(false);
-                setSelectedRequestForAudit(null);
-                }}
-            />
-        )}
-
-        {showViewModal && selectedRequest && (
-            <ViewBudgetRequest
-                request={selectedRequest}
-                onClose={() => {
-                setShowViewModal(false);
-                setSelectedRequest(null);
-                }}
-                onEdit={(request) => {
-                console.log('Edit request:', request);
-                // Handle edit functionality
-                setShowViewModal(false);
-                }}
-                onExport={(request) => {
-                console.log('Export request:', request);
-                // Handle export functionality
-                }}
-                showActions={true}
-            />
-        )}
+        {/* Modal Manager - Render active modal */}
+        {isModalOpen && modalContent}
       </div>
     </div>
   );
