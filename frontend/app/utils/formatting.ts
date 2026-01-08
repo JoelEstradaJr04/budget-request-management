@@ -5,3 +5,11 @@ export const formatDisplayText = (text: unknown): string => {
   }
   return text.replace(/_/g, ' ');
 };
+
+export const formatDate = (date: Date): string => {
+  return date.toLocaleDateString(undefined, {
+    year: 'numeric',
+    month: 'short',
+    day: 'numeric'
+  });
+};

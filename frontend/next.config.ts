@@ -8,8 +8,11 @@ const nextConfig = {
     NEXT_PUBLIC_API_URL: process.env.NEXT_PUBLIC_API_URL,
   },
 
-  // Webpack configuration
-  webpack: (config) => {
+  // Turbopack configuration (Next.js 16+ default)
+  turbopack: {},
+
+  // Webpack configuration (fallback for webpack mode)
+  webpack: (config: any) => {
     config.resolve.fallback = {
       ...config.resolve.fallback,
       fs: false,

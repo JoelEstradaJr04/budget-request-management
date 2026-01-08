@@ -179,7 +179,7 @@ class BudgetRequestService {
   /**
    * Get audit trail for budget request
    */
-  async getAuditTrail(id: number): Promise<ApiResponse<any[]>> {
+  async getAuditTrail(_id: number): Promise<ApiResponse<any[]>> {
     // This would call the audit logs service
     // For now, return mock data
     return {
@@ -198,7 +198,7 @@ class BudgetRequestService {
   /**
    * Export budget request (CSV/Excel/PDF)
    */
-  async export(id: number, format: 'csv' | 'excel' | 'pdf'): Promise<ApiResponse<Blob>> {
+  async export(_id: number, _format: 'csv' | 'excel' | 'pdf'): Promise<ApiResponse<Blob>> {
     // This would handle file download
     // Implementation depends on backend export endpoint
     return {
