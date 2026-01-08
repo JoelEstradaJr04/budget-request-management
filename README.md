@@ -91,36 +91,46 @@ pnpm build
 
 ## Deployment
 
-### 📚 Deployment Documentation
-
-For complete deployment instructions, see:
-- **[DEPLOYMENT_GUIDE.md](./DEPLOYMENT_GUIDE.md)** - Detailed step-by-step deployment guide
-- **[DEPLOYMENT_CONFIG.md](./DEPLOYMENT_CONFIG.md)** - Configuration summary and quick reference
-
 ### Frontend (Vercel)
-The frontend is configured for deployment on Vercel. 
 
-**Quick Setup:**
-1. Import repository to Vercel
-2. Set root directory to `frontend/`
-3. Configure environment variable from `frontend/vercel.env.txt`
-4. Deploy automatically using `vercel.json`
+**Vercel Configuration:**
+1. **Framework Preset**: Select **Next.js**
+2. **Root Directory**: Select **`frontend`** (NOT root `./`)
+3. **Environment Variables**: Add from `frontend/vercel.env.txt`
+   ```
+   NEXT_PUBLIC_API_BASE_URL=<your-railway-backend-url>
+   ```
+
+The deployment will:
+- Install dependencies from `frontend/package.json`
+- Build the Next.js app with `pnpm build`
+- Output to `.next` directory
+- Automatically exclude backend files
+
+**Configuration Files:**
+- `vercel.json` - Vercel deployment settings
+- `.vercelignore` - Excludes backend from deployment
+- `frontend/vercel.env.txt` - Environment variables template
 
 ### Backend (Railway)
-The backend is configured for deployment on Railway.
 
-**Quick Setup:**
-1. Create Railway project with PostgreSQL
-2. Connect GitHub repository
-3. Configure environment variables from `backend/railway.env.txt`
-4. Deploy automatically using `railway.json`
+**Railway Configuration:**
+1. Create new project with PostgreSQL database
+2. Connect your GitHub repository
+3. Railway will auto-detect `railway.json`
+4. Add environment variables from `backend/railway.env.txt`
 
-**Template Files:**
-- `backend/railway.env.txt` - Railway environment variables template
-- `frontend/vercel.env.txt` - Vercel environment variables template
-- `railway.json` - Backend deployment configuration
-- `vercel.json` - Frontend deployment configuration
-- `.vercelignore` - Files excluded from Vercel deployment
+The deployment will:
+- Install dependencies with `cd backend && pnpm install`
+- Generate Prisma client with `pnpm prisma:generate`
+- Build TypeScript with `pnpm build`
+- Run migrations with `pnpm prisma:migrate:prod`
+- Start server with `pnpm start`
+- Health check at `/api/health`
+
+**Configuration Files:**
+- `railway.json` - Railway deployment settings
+- `backend/railway.env.txt` - Environment variables template
 
 ## Project Structure
 
