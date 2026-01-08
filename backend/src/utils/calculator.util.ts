@@ -1,10 +1,17 @@
 // src/utils/calculator.util.ts
-import { CachedDepartmentBudget } from '@prisma/client';
 import { Decimal } from '@prisma/client/runtime/library';
+
+interface DepartmentBudget {
+  allocatedAmount: Decimal;
+  usedAmount: Decimal;
+  reservedAmount: Decimal;
+  remainingAmount: Decimal;
+  periodStart: Date;
+}
 
 export class BudgetCalculator {
   // Calculate budget utilization metrics
-  static calculateUtilization(budget: CachedDepartmentBudget) {
+  static calculateUtilization(budget: DepartmentBudget) {
     const allocated = Number(budget.allocatedAmount);
     const used = Number(budget.usedAmount);
     const reserved = Number(budget.reservedAmount);
