@@ -3,7 +3,7 @@ import { Router } from 'express';
 import * as analyticsController from '../controllers/analytics.controller';
 import { verifyJWT } from '../middlewares/auth.middleware';
 
-const router = Router();
+const router: any = Router();
 
 /**
  * @route   GET /api/analytics/department/:department/summary

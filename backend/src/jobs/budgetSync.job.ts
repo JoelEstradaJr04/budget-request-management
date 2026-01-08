@@ -16,7 +16,7 @@ export function startBudgetSyncJob() {
     
     try {
       const departments = DEPARTMENTS;
-      const results = [];
+      const results: any[] = [];
 
       for (const department of departments) {
         try {

@@ -2,7 +2,7 @@
 import express, { Request, Response } from 'express';
 import { prisma } from '../config/database';
 
-const router = express.Router();
+const router: any = express.Router();
 
 router.get('/', async (req: Request, res: Response) => {
   try {

@@ -2,8 +2,7 @@
 import { Request, Response } from 'express';
 import { prisma } from '../config/database';
 import { successResponse, errorResponse, notFoundResponse } from '../utils/response.util';
-import { logAuditActivity } from '../services/auditLogger.service';
-import { Prisma } from '@prisma/client';
+import auditLogger from '../services/auditLogger.service';
 
 /**
  * Get all item allocations for a budget request
@@ -12,11 +11,12 @@ export async function getItemAllocations(req: Request, res: Response) {
   try {
     const { requestId } = req.params;
 
-    const request = await prisma.budgetRequest.findUnique({
-      where: { request_id: parseInt(requestId) },
+    const request = await prisma.budget_request.findUnique({
+      where: { id: parseInt(requestId) },
       include: {
-        itemAllocations: {
-          orderBy: { item_id: 'asc' }
+        items: {
+          include: { category: true },
+          orderBy: { id: 'asc' }
         }
       }
     });
@@ -25,7 +25,7 @@ export async function getItemAllocations(req: Request, res: Response) {
       return notFoundResponse(res, 'Budget request not found');
     }
 
-    return successResponse(res, request.itemAllocations, 'Item allocations retrieved successfully');
+    return successResponse(res, request.items, 'Item allocations retrieved successfully');
   } catch (error) {
     console.error('Error fetching item allocations:', error);
     return errorResponse(res, 'Failed to retrieve item allocations');
@@ -39,23 +39,22 @@ export async function getItemAllocation(req: Request, res: Response) {
   try {
     const { requestId, itemId } = req.params;
 
-    const item = await prisma.budgetRequestItemAllocation.findUnique({
-      where: {
-        item_id: parseInt(itemId)
-      },
+    const item = await prisma.budget_request_item.findUnique({
+      where: { id: parseInt(itemId) },
       include: {
-        budgetRequest: {
+        budget_request: {
           select: {
-            request_id: true,
+            id: true,
             request_code: true,
-            department: true,
-            current_status: true
+            department_id: true,
+            status: true
           }
-        }
+        },
+        category: true
       }
     });
 
-    if (!item || item.request_id !== parseInt(requestId)) {
+    if (!item || item.budget_request_id !== parseInt(requestId)) {
       return notFoundResponse(res, 'Item allocation not found');
     }
 
@@ -72,78 +71,66 @@ export async function getItemAllocation(req: Request, res: Response) {
 export async function addItemAllocation(req: Request, res: Response) {
   try {
     const { requestId } = req.params;
-    const { item_code, description, category, quantity, unit_price, justification } = req.body;
+    const { category_id, description, requested_amount, notes } = req.body;
 
-    // Check if budget request exists and is in DRAFT status
-    const budgetRequest = await prisma.budgetRequest.findUnique({
-      where: { request_id: parseInt(requestId) }
+    // Check if budget request exists and is in PENDING status
+    const budgetRequest = await prisma.budget_request.findUnique({
+      where: { id: parseInt(requestId) }
     });
 
     if (!budgetRequest) {
       return notFoundResponse(res, 'Budget request not found');
     }
 
-    if (budgetRequest.current_status !== 'DRAFT') {
-      return errorResponse(res, 'Can only add items to draft requests', 400);
+    if (budgetRequest.status !== 'PENDING') {
+      return errorResponse(res, 'Can only add items to pending requests', 400);
     }
 
     // Check if user has permission to modify this request
     if (req.user?.role !== 'SuperAdmin' && 
-        req.user?.department !== budgetRequest.department) {
+        req.user?.department !== budgetRequest.department_id) {
       return errorResponse(res, 'You do not have permission to modify this request', 403);
     }
 
-    // Calculate total amount
-    const total_amount = quantity * unit_price;
-
     // Create item allocation
-    const item = await prisma.budgetRequestItemAllocation.create({
+    const item = await prisma.budget_request_item.create({
       data: {
-        request_id: parseInt(requestId),
-        item_code,
+        budget_request_id: parseInt(requestId),
+        category_id,
         description,
-        category,
-        quantity,
-        unit_price,
-        total_amount,
-        justification,
-        approval_status: 'PENDING',
-        created_by: req.user?.username || 'system',
-        created_at: new Date()
+        requested_amount,
+        approved_amount: requested_amount,
+        notes
+      },
+      include: {
+        category: true
       }
     });
 
     // Recalculate request total
-    const items = await prisma.budgetRequestItemAllocation.findMany({
-      where: { request_id: parseInt(requestId) }
+    const items = await prisma.budget_request_item.findMany({
+      where: { budget_request_id: parseInt(requestId) }
     });
 
-    const newTotal = items.reduce((sum, item) => sum + item.total_amount, 0);
+    const newTotal = items.reduce((sum, item) => sum + Number(item.requested_amount), 0);
 
-    await prisma.budgetRequest.update({
-      where: { request_id: parseInt(requestId) },
+    await prisma.budget_request.update({
+      where: { id: parseInt(requestId) },
       data: {
-        total_amount: newTotal,
-        updated_at: new Date(),
-        updated_by: req.user?.username || 'system'
+        total_amount: newTotal
       }
     });
 
     // Log audit activity
-    await logAuditActivity({
-      action: 'ITEM_ADDED',
-      module: 'BUDGET_REQUEST',
-      userId: req.user?.id || 'system',
+    await auditLogger.log('ITEM_ADDED', {
+      requestId: budgetRequest.id,
+      itemId: item.id,
+      amount: requested_amount
+    }, {
+      id: req.user?.id || 'system',
       username: req.user?.username || 'system',
-      department: req.user?.department || 'system',
-      description: `Added item ${item_code} to budget request ${budgetRequest.request_code}`,
-      ipAddress: req.ip || 'unknown',
-      metadata: {
-        requestId: budgetRequest.request_id,
-        itemId: item.item_id,
-        itemCode: item_code,
-        amount: total_amount
-      }
+      role: req.user?.role || 'user',
+      department: req.user?.department || 'system'
     });
 
     return successResponse(res, item, 'Item allocation added successfully', 201);
@@ -159,81 +146,70 @@ export async function addItemAllocation(req: Request, res: Response) {
 export async function updateItemAllocation(req: Request, res: Response) {
   try {
     const { requestId, itemId } = req.params;
-    const { description, category, quantity, unit_price, justification } = req.body;
+    const { description, category_id, requested_amount, notes } = req.body;
 
     // Get the item
-    const item = await prisma.budgetRequestItemAllocation.findUnique({
-      where: { item_id: parseInt(itemId) },
+    const item = await prisma.budget_request_item.findUnique({
+      where: { id: parseInt(itemId) },
       include: {
-        budgetRequest: true
+        budget_request: true
       }
     });
 
-    if (!item || item.request_id !== parseInt(requestId)) {
+    if (!item || item.budget_request_id !== parseInt(requestId)) {
       return notFoundResponse(res, 'Item allocation not found');
     }
 
     // Check if request is editable
-    if (item.budgetRequest.current_status !== 'DRAFT') {
-      return errorResponse(res, 'Can only update items in draft requests', 400);
+    if (item.budget_request.status !== 'PENDING') {
+      return errorResponse(res, 'Can only update items in pending requests', 400);
     }
 
     // Check permissions
     if (req.user?.role !== 'SuperAdmin' && 
-        req.user?.department !== item.budgetRequest.department) {
+        req.user?.department !== item.budget_request.department_id) {
       return errorResponse(res, 'You do not have permission to modify this request', 403);
     }
 
-    // Calculate new total
-    const newQuantity = quantity ?? item.quantity;
-    const newUnitPrice = unit_price ?? item.unit_price;
-    const total_amount = newQuantity * newUnitPrice;
-
     // Update item
-    const updatedItem = await prisma.budgetRequestItemAllocation.update({
-      where: { item_id: parseInt(itemId) },
+    const updatedItem = await prisma.budget_request_item.update({
+      where: { id: parseInt(itemId) },
       data: {
         description: description ?? item.description,
-        category: category ?? item.category,
-        quantity: newQuantity,
-        unit_price: newUnitPrice,
-        total_amount,
-        justification: justification ?? item.justification,
-        updated_at: new Date(),
-        updated_by: req.user?.username || 'system'
+        category_id: category_id ?? item.category_id,
+        requested_amount: requested_amount ?? item.requested_amount,
+        approved_amount: requested_amount ?? item.approved_amount,
+        notes: notes ?? item.notes
+      },
+      include: {
+        category: true
       }
     });
 
     // Recalculate request total
-    const items = await prisma.budgetRequestItemAllocation.findMany({
-      where: { request_id: parseInt(requestId) }
+    const items = await prisma.budget_request_item.findMany({
+      where: { budget_request_id: parseInt(requestId) }
     });
 
-    const newTotal = items.reduce((sum, item) => sum + item.total_amount, 0);
+    const newTotal = items.reduce((sum, item) => sum + Number(item.requested_amount), 0);
 
-    await prisma.budgetRequest.update({
-      where: { request_id: parseInt(requestId) },
+    await prisma.budget_request.update({
+      where: { id: parseInt(requestId) },
       data: {
-        total_amount: newTotal,
-        updated_at: new Date(),
-        updated_by: req.user?.username || 'system'
+        total_amount: newTotal
       }
     });
 
     // Log audit activity
-    await logAuditActivity({
-      action: 'ITEM_UPDATED',
-      module: 'BUDGET_REQUEST',
-      userId: req.user?.id || 'system',
+    await auditLogger.log('ITEM_UPDATED', {
+      requestId: item.budget_request_id,
+      itemId: item.id,
+      changes: { requested_amount }
+    }, {
+      id: req.user?.id || 'system',
       username: req.user?.username || 'system',
-      department: req.user?.department || 'system',
-      description: `Updated item ${item.item_code} in budget request ${item.budgetRequest.request_code}`,
-      ipAddress: req.ip || 'unknown',
-      metadata: {
-        requestId: item.request_id,
-        itemId: item.item_id,
-        changes: { quantity, unit_price, total_amount }
-      }
+      role: req.user?.role || 'user',
+      department: req.user?.department || 'system'
     });
 
     return successResponse(res, updatedItem, 'Item allocation updated successfully');
@@ -251,63 +227,56 @@ export async function deleteItemAllocation(req: Request, res: Response) {
     const { requestId, itemId } = req.params;
 
     // Get the item
-    const item = await prisma.budgetRequestItemAllocation.findUnique({
-      where: { item_id: parseInt(itemId) },
+    const item = await prisma.budget_request_item.findUnique({
+      where: { id: parseInt(itemId) },
       include: {
-        budgetRequest: true
+        budget_request: true
       }
     });
 
-    if (!item || item.request_id !== parseInt(requestId)) {
+    if (!item || item.budget_request_id !== parseInt(requestId)) {
       return notFoundResponse(res, 'Item allocation not found');
     }
 
     // Check if request is editable
-    if (item.budgetRequest.current_status !== 'DRAFT') {
-      return errorResponse(res, 'Can only delete items from draft requests', 400);
+    if (item.budget_request.status !== 'PENDING') {
+      return errorResponse(res, 'Can only delete items from pending requests', 400);
     }
 
     // Check permissions
     if (req.user?.role !== 'SuperAdmin' && 
-        req.user?.department !== item.budgetRequest.department) {
+        req.user?.department !== item.budget_request.department_id) {
       return errorResponse(res, 'You do not have permission to modify this request', 403);
     }
 
     // Delete item
-    await prisma.budgetRequestItemAllocation.delete({
-      where: { item_id: parseInt(itemId) }
+    await prisma.budget_request_item.delete({
+      where: { id: parseInt(itemId) }
     });
 
     // Recalculate request total
-    const items = await prisma.budgetRequestItemAllocation.findMany({
-      where: { request_id: parseInt(requestId) }
+    const items = await prisma.budget_request_item.findMany({
+      where: { budget_request_id: parseInt(requestId) }
     });
 
-    const newTotal = items.reduce((sum, item) => sum + item.total_amount, 0);
+    const newTotal = items.reduce((sum, item) => sum + Number(item.requested_amount), 0);
 
-    await prisma.budgetRequest.update({
-      where: { request_id: parseInt(requestId) },
+    await prisma.budget_request.update({
+      where: { id: parseInt(requestId) },
       data: {
-        total_amount: newTotal,
-        updated_at: new Date(),
-        updated_by: req.user?.username || 'system'
+        total_amount: newTotal
       }
     });
 
     // Log audit activity
-    await logAuditActivity({
-      action: 'ITEM_DELETED',
-      module: 'BUDGET_REQUEST',
-      userId: req.user?.id || 'system',
+    await auditLogger.log('ITEM_DELETED', {
+      requestId: item.budget_request_id,
+      itemId: item.id
+    }, {
+      id: req.user?.id || 'system',
       username: req.user?.username || 'system',
-      department: req.user?.department || 'system',
-      description: `Deleted item ${item.item_code} from budget request ${item.budgetRequest.request_code}`,
-      ipAddress: req.ip || 'unknown',
-      metadata: {
-        requestId: item.request_id,
-        itemId: item.item_id,
-        itemCode: item.item_code
-      }
+      role: req.user?.role || 'user',
+      department: req.user?.department || 'system'
     });
 
     return successResponse(res, null, 'Item allocation deleted successfully');
@@ -325,14 +294,14 @@ export async function approveItemAllocation(req: Request, res: Response) {
     const { requestId, itemId } = req.params;
     const { approved_amount, comments } = req.body;
 
-    const item = await prisma.budgetRequestItemAllocation.findUnique({
-      where: { item_id: parseInt(itemId) },
+    const item = await prisma.budget_request_item.findUnique({
+      where: { id: parseInt(itemId) },
       include: {
-        budgetRequest: true
+        budget_request: true
       }
     });
 
-    if (!item || item.request_id !== parseInt(requestId)) {
+    if (!item || item.budget_request_id !== parseInt(requestId)) {
       return notFoundResponse(res, 'Item allocation not found');
     }
 
@@ -341,31 +310,27 @@ export async function approveItemAllocation(req: Request, res: Response) {
       return errorResponse(res, 'Only SuperAdmin can approve items', 403);
     }
 
-    const updatedItem = await prisma.budgetRequestItemAllocation.update({
-      where: { item_id: parseInt(itemId) },
+    const updatedItem = await prisma.budget_request_item.update({
+      where: { id: parseInt(itemId) },
       data: {
-        approval_status: 'APPROVED',
-        approved_amount: approved_amount || item.total_amount,
-        approval_notes: comments,
-        approved_by: req.user?.username || 'system',
-        approved_at: new Date()
+        approved_amount: approved_amount || item.requested_amount,
+        notes: comments || item.notes
+      },
+      include: {
+        category: true
       }
     });
 
     // Log audit activity
-    await logAuditActivity({
-      action: 'ITEM_APPROVED',
-      module: 'BUDGET_REQUEST',
-      userId: req.user?.id || 'system',
+    await auditLogger.log('ITEM_APPROVED', {
+      requestId: item.budget_request_id,
+      itemId: item.id,
+      approvedAmount: approved_amount || item.requested_amount
+    }, {
+      id: req.user?.id || 'system',
       username: req.user?.username || 'system',
-      department: req.user?.department || 'system',
-      description: `Approved item ${item.item_code} in budget request ${item.budgetRequest.request_code}`,
-      ipAddress: req.ip || 'unknown',
-      metadata: {
-        requestId: item.request_id,
-        itemId: item.item_id,
-        approvedAmount: approved_amount || item.total_amount
-      }
+      role: req.user?.role || 'user',
+      department: req.user?.department || 'system'
     });
 
     return successResponse(res, updatedItem, 'Item allocation approved successfully');

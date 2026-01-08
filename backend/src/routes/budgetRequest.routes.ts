@@ -6,7 +6,7 @@ import { validateCreateBudgetRequest, validateApproval, validateRejection } from
 import { createLimiter } from '../middlewares/rateLimit.middleware';
 import * as controller from '../controllers/budgetRequest.controller';
 
-const router = express.Router();
+const router: any = express.Router();
 
 // All routes require JWT authentication
 router.use(verifyJWT);

@@ -7,7 +7,7 @@ import { checkPermission } from '../../../middlewares/permission.middleware';
 import { verifyJWT } from '../../../middlewares/auth.middleware';
 import { validateCreateBudgetRequest } from '../../../middlewares/validation.middleware';
 
-const router = Router();
+const router: any = Router();
 
 // All routes require JWT authentication
 router.use(verifyJWT);

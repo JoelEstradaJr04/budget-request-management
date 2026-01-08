@@ -21,7 +21,7 @@ import inventoryNonAdminBudgetRoutes from './inventory/nonAdmin/budgetRequest.ro
 import operationsAdminBudgetRoutes from './operations/admin/budgetRequest.routes';
 import operationsNonAdminBudgetRoutes from './operations/nonAdmin/budgetRequest.routes';
 
-const router = express.Router();
+const router: any = express.Router();
 
 // Health check (no auth required)
 router.use('/health', healthRoutes);
