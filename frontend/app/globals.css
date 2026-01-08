@@ -48,27 +48,89 @@ textarea.input-error {
   background-color: none !important;
 }
 
-.closeButton {
-	width: 30px !important;
-	height: 30px !important;
-	border: none !important;
-	cursor: pointer !important;
-  padding: 0 0 !important;
-	border-radius: 50% !important;
-	position: absolute !important;
-	top: 0px !important;
-  outline:none !important;
-	right: 0px !important;
-	font-size: 20px !important;
-	color: var(--primary-text-color) !important;
-	transition: all 0.3s ease-in-out !important;
-  justify-content: center !important;
-  align-items: center !important;
+/* Page.tsx styling */
+.settings {
   display: flex !important;
+  width: 100% !important;
+  flex-wrap: wrap !important;
+  gap: 0 !important;
+  margin-bottom: 0px !important;
+  justify-content: space-between !important;
 }
 
-.closeButton:hover {
-	background-color: var(--table-header-color) !important;
+.search-filter-container {
+  display: flex !important;
+  align-items: center !important;
+  gap: 0.5rem !important;
+}
+
+.searchBar {
+  display: flex !important;
+  align-items: center !important;
+  width: auto !important;
+  min-width: 300px !important;
+  padding: var(--search-input-padding-right) !important;
+  height: var(--search-input-height) !important;
+  border: 1px solid var(--border-color) !important;
+  border-radius: var(--search-input-border-radius) !important;
+  background-color: var(--foreground-color) !important;
+  box-shadow: var(--box-shadow) !important;
+}
+
+.searchBar .searchInput {
+  flex: 1 !important;
+  border: none !important;
+  outline: none !important;
+  padding: 0 8px !important;
+  font-size: 14px !important;
+  color: var(--primary-text-color) !important;
+  background: transparent !important;
+  box-shadow: none !important;
+}
+
+.modalButtons, .filters {
+  display: flex !important;
+  gap: var(--page-button-gap) !important;
+  justify-content: flex-end !important;
+}
+
+.modalButtons button,
+.filters button {
+  width: var(--modal-button-width) !important;
+  height: var(--modal-button-height) !important;
+  font-size: var(--modal-button-font-size) !important;
+  border-radius: var(--modal-button-border-radius) !important;
+  border: none !important;
+  outline: none !important;
+  cursor: pointer !important;
+  color: var(--button-font-color) !important;
+  box-shadow: var(--box-shadow) !important;
+  transition: transform 0.15s ease, background 0.15s ease !important;
+  display: flex !important;
+  justify-content: center !important;
+  align-items: center !important;
+}
+
+.addButton {
+  background: var(--primary-color) !important;
+}
+.addButton:hover {
+  background: var(--primary-hover-color) !important;
+}
+.addButton:disabled {
+  background: var(--button-disabled-color) !important;
+}
+.addButton:disabled:hover {
+  background: var(--button-disabled-color) !important;
+}
+
+/* Container for ships View/Modals*/
+.chip-container {
+  background: none !important;
+  outline: none !important;
+  border: none !important;
+  box-shadow: none !important;
+  shadow: none !important;
 }
 
 :root {
@@ -98,10 +160,12 @@ textarea.input-error {
   --border-color: #B3B3B3;
   --table-header-color: #D8D8D8;
   --table-row-border-bottom: 1px solid #B3B3B3;
+  --table-row-color: #FFFFFF;
   --table-row-hover-color: #ECECEC;
 
   /* Button Color */
   --button-font-color: #FFFFFF;
+  --button-disabled-color: #7a7a7a;
 
   /* Chip Colors */
   --success-chip-bg-color: #D1F7D1;
@@ -122,8 +186,35 @@ textarea.input-error {
   --table-header-hover-color: #DDDDDD;
   --table-row-hover-color: #ECECEC;
   --warning-hover-color: #E6B800;
+  
   /* Shadow */
   --box-shadow: 0 2px 4px rgba(0, 0, 0, 0.15);
+
+  /* JEV Colors */
+  --jev-balanced-bg: #D1F7D1;
+  --jev-balanced-text: #23915F;
+  --jev-unbalanced-bg: #FFDDDD;
+  --jev-unbalanced-text: #A50000;
+  --jev-line-hover-bg: #F5F5F5;
+  --jev-changed-field-bg: #FFFDE7;
+  --jev-changed-field-border: #FBC02D;
+  --jev-totals-bg: #F9F9F9;
+  --jev-reset-button-bg: #FF9800;
+  --jev-reset-button-hover: #F57C00;
+  --jev-undo-button-bg: #9E9E9E;
+  --jev-undo-button-hover: #757575;
+  --jev-undo-highlight-bg: #E3F2FD;
+
+  /* JEV Sizes */
+  --jev-table-max-height: 400px;
+  --jev-account-cell-width: 45%;
+  --jev-amount-cell-width: 20%;
+  --jev-actions-cell-width: 10%;
+  --jev-form-section-padding: 20px 0;
+  --jev-form-field-gap: 20px;
+  --jev-modal-content-padding: 24px;
+  --jev-changed-icon-size: 16px;
+  --jev-action-button-gap: 12px;
 
   /* ================ SIZES ================*/
 
@@ -180,6 +271,10 @@ textarea.input-error {
   --modal-content-background-color: #ECECEC;
   --modal-content-border-radius: 8px;
   --modal-content-padding: 20px;
+  --modal-content-margin-bottom: 20px;
+  --modal-section-title-font-size: 18px;
+  --modal-section-title-font-weight: 600;
+  --modal-section-title-margin-bottom: 10px;
   --modal-input-select-background-color: #FFFFFF;
   --modal-content-row-gap: 1rem;
   --modal-content-column-gap: 20px;
@@ -246,10 +341,10 @@ body {
   display: flex !important;
   align-items: center !important;
   justify-content: space-between !important;
-  padding: 1.5rem 2rem 1rem 2rem !important;
-  border-bottom: 1px solid var(--border-color) !important;
+  padding: 1.25rem 2rem !important;
   background: var(--foreground-color) !important;
-  margin-bottom: 1.5rem !important;
+  border-bottom: 1px solid var(--border-color) !important;
+  flex-shrink: 0 !important;
 }
 
 .header-left h1,
@@ -259,8 +354,8 @@ body {
 .modalHeader h2,
 .modalHeader h3 {
   margin: 0 !important;
-  font-size: var(--title-font-size) !important;
-  font-weight: var(--title-font-weight) !important;
+  font-size: 1.5rem !important;
+  font-weight: 600 !important;
   color: var(--primary-text-color) !important;
 }
 
@@ -272,27 +367,52 @@ body {
 
 .timeDate {
   display: flex !important;
-  flex-direction: row !important;
+  flex-direction: column !important;
   align-items: flex-end !important;
   text-align: right !important;
+  gap: 0.25rem !important;
+}
+
+.currTime {
+  color: var(--primary-color) !important;
+  font-size: 1rem !important;
+  font-weight: 600 !important;
+  margin: 0 !important;
+}
+
+.currDate {
   color: var(--secondary-text-color) !important;
-  font-size: 0.8rem !important;
-  font-style: italic !important;
-  gap: 5px;
+  font-size: 0.85rem !important;
+  margin: 0 !important;
 }
 
 .closeButton, .close-btn {
-  background: none !important;
-  border: none !important;
-  font-size: 1.5rem !important;
-  cursor: pointer !important;
+  background: transparent !important;
+  border: 1px solid var(--border-color) !important;
   color: var(--secondary-text-color) !important;
-  transition: color 0.2s !important;
-  padding: 0.25rem !important;
+  width: 32px !important;
+  height: 32px !important;
+  border-radius: 4px !important;
+  font-size: 1.25rem !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  cursor: pointer !important;
+  transition: all 0.2s !important;
+  padding: 0 !important;
+  line-height: 1 !important;
 }
 
 .closeButton:hover, .close-btn:hover {
-  color: var(--primary-text-color) !important;
+  background: var(--error-color) !important;
+  border-color: var(--error-color) !important;
+  color: white !important;
+  transform: none !important;
+}
+
+.closeButton i, .close-btn i {
+  font-size: 1.25rem !important;
+  line-height: 1 !important;
 }
 
 /* ---break---*/
@@ -372,39 +492,6 @@ body {
 }
 
 /* ---break---*/
-
-/* Microservice Container Styles */
-.microservice-container {
-  width: 100%;
-  height: 100vh;
-  padding: 0;
-  margin: 0;
-  background-color: var(--background-color);
-  overflow-y: auto;
-  font-family: "Open Sans", sans-serif;
-}
-
-/* Reset body styles for microservice mode */
-body {
-  margin: 0;
-  padding: 0;
-  font-family: "Open Sans", sans-serif !important;
-  background-color: var(--background-color);
-  color: var(--text-color);
-}
-
-/* Ensure content takes full space */
-.microservice-container > * {
-  width: 100%;
-}
-
-/* Responsive styles */
-.microservice-container .page-container {
-  width: 100%;
-  height: auto;
-  min-height: 100%;
-  padding: 16px;
-}
 
 @layer base {
   * {
