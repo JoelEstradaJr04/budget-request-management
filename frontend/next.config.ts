@@ -9,7 +9,7 @@ const nextConfig = {
   },
 
   // Webpack configuration
-  webpack: (config) => {
+  webpack: (config: any) => {
     config.resolve.fallback = {
       ...config.resolve.fallback,
       fs: false,

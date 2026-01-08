@@ -4,7 +4,7 @@ import React, { useState, useEffect } from 'react';
 import "@/styles/budget-management/addBudgetRequest.css";
 import { formatDate } from '../../../utils/dateFormatter';
 import { showSuccess, showError, showConfirmation } from '../../../utils/Alerts';
-import { validateField, isValidAmount, ValidationRule } from "../../../utils/validation";
+import { isValidAmount, ValidationRule } from "../../../utils/validation";
 import ModalHeader from '../../../Components/ModalHeader';
 import ItemTableModal, { ItemField } from '../../../Components/ItemTableModal';
 import ModalManager from '../../../Components/modalManager';
