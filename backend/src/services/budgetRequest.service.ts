@@ -17,12 +17,12 @@ export async function findMany(filter: any, options: any = {}) {
   });
 
   // Calculate aggregated amounts from items
-  const requestsWithAggregates = budgetRequests.map(request => {
-    const aggregatedRequestedAmount = request.items.reduce((sum, item) => {
+  const requestsWithAggregates = budgetRequests.map((request: any) => {
+    const aggregatedRequestedAmount = request.items.reduce((sum: number, item: any) => {
       return sum + Number(item.requested_amount);
     }, 0);
 
-    const aggregatedApprovedAmount = request.items.reduce((sum, item) => {
+    const aggregatedApprovedAmount = request.items.reduce((sum: number, item: any) => {
       return sum + Number(item.approved_amount || 0);
     }, 0);
 

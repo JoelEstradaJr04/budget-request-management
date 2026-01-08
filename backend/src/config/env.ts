@@ -44,7 +44,7 @@ export type Env = z.infer<typeof envSchema>;
 export function validateEnv(): Env {
   try {
     return envSchema.parse(process.env);
-  } catch (error) {
+  } catch (error: unknown) {
     if (error instanceof z.ZodError) {
       const missingVars = error.errors.map(err => err.path.join('.')).join(', ');
       throw new Error(`Invalid environment variables: ${missingVars}`);
