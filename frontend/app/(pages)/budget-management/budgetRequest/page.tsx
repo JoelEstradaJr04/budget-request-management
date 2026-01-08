@@ -813,13 +813,13 @@ const BudgetRequestPage = () => {
                       <i className={`ri-arrow-${sortOrder === 'asc' ? 'up' : 'down'}-line`} />
                     )}
                   </th>
-                  <th onClick={() => handleSort('status')} className="sortable">
+                  <th onClick={() => handleSort('status')} className="sortable sticky-status">
                     Status
                     {sortField === 'status' && (
                       <i className={`ri-arrow-${sortOrder === 'asc' ? 'up' : 'down'}-line`} />
                     )}
                   </th>
-                  <th>Actions</th>
+                  <th className="sticky-actions">Actions</th>
                 </tr>
               </thead>
               <tbody>
