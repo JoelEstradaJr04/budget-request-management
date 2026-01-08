@@ -16,7 +16,7 @@ export function startAggregatesJob() {
     console.log('📊 [Aggregates Job] Starting...');
     
     try {
-      const results = [];
+      const results: any[] = [];
 
       for (const department of DEPARTMENTS) {
         try {
@@ -24,27 +24,25 @@ export function startAggregatesJob() {
 
           // Count requests by status
           const [total, pending, approved, rejected] = await Promise.all([
-            prisma.budgetRequest.count({
-              where: { department, isDeleted: false }
+            prisma.budget_request.count({
+              where: { department_id: department, is_deleted: false }
             }),
-            prisma.budgetRequest.count({
-              where: { department, isDeleted: false, status: 'PENDING' }
+            prisma.budget_request.count({
+              where: { department_id: department, is_deleted: false, status: 'PENDING' }
             }),
-            prisma.budgetRequest.count({
-              where: { department, isDeleted: false, status: 'APPROVED' }
+            prisma.budget_request.count({
+              where: { department_id: department, is_deleted: false, status: 'APPROVED' }
             }),
-            prisma.budgetRequest.count({
-              where: { department, isDeleted: false, status: 'REJECTED' }
+            prisma.budget_request.count({
+              where: { department_id: department, is_deleted: false, status: 'REJECTED' }
             })
           ]);
 
           // Sum amounts
-          const amountStats = await prisma.budgetRequest.aggregate({
-            where: { department, isDeleted: false },
+          const amountStats = await prisma.budget_request.aggregate({
+            where: { department_id: department, is_deleted: false },
             _sum: {
-              amountRequested: true,
-              reservedAmount: true,
-              actualAmountUtilized: true
+              total_amount: true
             }
           });
 
@@ -54,9 +52,7 @@ export function startAggregatesJob() {
             pendingRequests: pending,
             approvedRequests: approved,
             rejectedRequests: rejected,
-            totalRequested: Number(amountStats._sum.amountRequested) || 0,
-            totalReserved: Number(amountStats._sum.reservedAmount) || 0,
-            totalUtilized: Number(amountStats._sum.actualAmountUtilized) || 0,
+            totalAmount: Number(amountStats._sum.total_amount) || 0,
             approvalRate: total > 0 ? ((approved / total) * 100).toFixed(2) : '0.00'
           };
 
