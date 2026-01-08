@@ -27,6 +27,7 @@ export interface BudgetRequestItemCreate {
   category_id?: number;  // Links to budget_category
   description?: string;
   requested_amount: number;
+  approved_amount?: number;  // Optional, only set during approval
   notes?: string;
   pr_item_id?: number;  // Optional link to purchase_request_item
 }
@@ -93,6 +94,10 @@ export interface BudgetRequestResponse {
   updated_at: Date;
   is_deleted: boolean;
 
+  // Aggregated amounts from items (calculated from budget_request_item)
+  aggregated_requested_amount?: number;
+  aggregated_approved_amount?: number;
+
   // Relations (optional, included with specific queries)
   items?: BudgetRequestItemResponse[];
 }
@@ -103,6 +108,7 @@ export interface BudgetRequestItemResponse {
   category_id: number | null;
   description: string | null;
   requested_amount: number;
+  approved_amount: number;
   notes: string | null;
   pr_item_id: number | null;
   category?: BudgetCategoryResponse;

@@ -4,7 +4,7 @@ import notificationService from './notification.service';
 import { UserContext } from '../types/express';
 
 export async function findMany(filter: any, options: any = {}) {
-  return prisma.budget_request.findMany({
+  const budgetRequests = await prisma.budget_request.findMany({
     where: filter,
     include: {
       items: {
@@ -15,6 +15,25 @@ export async function findMany(filter: any, options: any = {}) {
     },
     ...options
   });
+
+  // Calculate aggregated amounts from items
+  const requestsWithAggregates = budgetRequests.map(request => {
+    const aggregatedRequestedAmount = request.items.reduce((sum, item) => {
+      return sum + Number(item.requested_amount);
+    }, 0);
+
+    const aggregatedApprovedAmount = request.items.reduce((sum, item) => {
+      return sum + Number(item.approved_amount || 0);
+    }, 0);
+
+    return {
+      ...request,
+      aggregated_requested_amount: aggregatedRequestedAmount,
+      aggregated_approved_amount: aggregatedApprovedAmount
+    };
+  });
+
+  return requestsWithAggregates;
 }
 
 export async function count(filter: any) {
@@ -74,6 +93,7 @@ export async function create(data: any, user: UserContext) {
         category_id: item.category_id || null,
         description: item.description || item.itemName || item.item_name || null,
         requested_amount: item.requested_amount || item.totalCost || item.subtotal || 0,
+        approved_amount: item.approved_amount || 0,
         notes: item.notes || null,
         pr_item_id: item.pr_item_id || null
       }));

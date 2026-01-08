@@ -9,6 +9,7 @@ export interface BudgetRequestItem {
   category_id?: number;
   description?: string;
   requested_amount: number;
+  approved_amount?: number;
   notes?: string;
   pr_item_id?: number;
 }
@@ -22,6 +23,8 @@ export interface BudgetRequest {
   requested_for?: string;
   request_date: string;
   total_amount: number;
+  aggregated_requested_amount?: number;
+  aggregated_approved_amount?: number;
   status: 'PENDING' | 'APPROVED' | 'REJECTED' | 'ADJUSTED' | 'CLOSED';
   purpose?: string;
   remarks?: string;

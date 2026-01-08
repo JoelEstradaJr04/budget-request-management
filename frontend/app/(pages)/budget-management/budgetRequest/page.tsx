@@ -43,6 +43,8 @@ interface BudgetRequest {
   request_date: string;
   total_amount: number;
   approved_amount?: number;
+  aggregated_requested_amount?: number;
+  aggregated_approved_amount?: number;
   status: 'PENDING' | 'APPROVED' | 'REJECTED' | 'ADJUSTED' | 'CLOSED';
   purpose?: string;
   remarks?: string;
@@ -793,24 +795,21 @@ const BudgetRequestPage = () => {
                       <i className={`ri-arrow-${sortOrder === 'asc' ? 'up' : 'down'}-line`} />
                     )}
                   </th>
-                  <th className="sortable">
-                    Budget Category
-                  </th>
-                  <th onClick={() => handleSort('total_amount')} className="sortable">
-                    Requested Amount
-                    {sortField === 'total_amount' && (
-                      <i className={`ri-arrow-${sortOrder === 'asc' ? 'up' : 'down'}-line`} />
-                    )}
-                  </th>
-                  <th onClick={() => handleSort('approved_amount')} className="sortable">
-                    Approved Amount
-                    {sortField === 'approved_amount' && (
-                      <i className={`ri-arrow-${sortOrder === 'asc' ? 'up' : 'down'}-line`} />
-                    )}
-                  </th>
                   <th onClick={() => handleSort('request_type')} className="sortable">
-                    Requested Type
+                    Request Type
                     {sortField === 'request_type' && (
+                      <i className={`ri-arrow-${sortOrder === 'asc' ? 'up' : 'down'}-line`} />
+                    )}
+                  </th>
+                  <th onClick={() => handleSort('aggregated_requested_amount')} className="sortable">
+                    Requested Amount
+                    {sortField === 'aggregated_requested_amount' && (
+                      <i className={`ri-arrow-${sortOrder === 'asc' ? 'up' : 'down'}-line`} />
+                    )}
+                  </th>
+                  <th onClick={() => handleSort('aggregated_approved_amount')} className="sortable">
+                    Approved Amount
+                    {sortField === 'aggregated_approved_amount' && (
                       <i className={`ri-arrow-${sortOrder === 'asc' ? 'up' : 'down'}-line`} />
                     )}
                   </th>
@@ -837,11 +836,21 @@ const BudgetRequestPage = () => {
                   >
                     <td>{item.department_name || 'N/A'}</td>
                     <td>{formatDate(item.created_at)}</td>
-                    <td><span className="category-badge">{getBudgetCategory(item.items)}</span></td>
+                    <td>
+                      <span className={`priority-badge priority-${item.request_type?.toLowerCase()}`}>
+                        {item.request_type}
+                      </span>
+                    </td>
                     <td className="amount-cell">
-                      {item.approved_amount !== null && item.approved_amount !== undefined ? (
+                      ₱{Number(item.aggregated_requested_amount || item.total_amount).toLocaleString(undefined, { 
+                        minimumFractionDigits: 2, 
+                        maximumFractionDigits: 2 
+                      })}
+                    </td>
+                    <td className="amount-cell">
+                      {item.aggregated_approved_amount !== null && item.aggregated_approved_amount !== undefined && item.aggregated_approved_amount > 0 ? (
                         <span className="approved-amount">
-                          ₱{Number(item.approved_amount).toLocaleString(undefined, { 
+                          ₱{Number(item.aggregated_approved_amount).toLocaleString(undefined, { 
                             minimumFractionDigits: 2, 
                             maximumFractionDigits: 2 
                           })}
@@ -849,17 +858,6 @@ const BudgetRequestPage = () => {
                       ) : (
                         <span className="not-approved">-</span>
                       )}
-                    </td>
-                    <td className="amount-cell">
-                      ₱{Number(item.total_amount).toLocaleString(undefined, { 
-                        minimumFractionDigits: 2, 
-                        maximumFractionDigits: 2 
-                      })}
-                    </td>
-                    <td>
-                      <span className={`priority-badge priority-${item.request_type?.toLowerCase()}`}>
-                        {item.request_type}
-                      </span>
                     </td>
                     <td><StatusBadge status={item.status} /></td>
                     <td className="actionButtons">

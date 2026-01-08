@@ -95,6 +95,7 @@ budget_request_id   Int
 category_id         Int?
 description         String?             @db.Text
 requested_amount    Decimal             @db.Decimal(14,2)
+approved_amount		Decimal             @db.Decimal(14,2)
 notes               String?
 
 pr_item_id          Int?                // optional link to purchase_request_item
