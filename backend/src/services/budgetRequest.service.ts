@@ -2,11 +2,6 @@
 import { prisma } from '../config/database';
 import notificationService from './notification.service';
 import { UserContext } from '../types/express';
-import { Prisma } from '@prisma/client';
-
-type BudgetRequestWithItems = Prisma.budget_requestGetPayload<{
-  include: { items: { include: { category: true } } }
-}>;
 
 export async function findMany(filter: any, options: any = {}) {
   const budgetRequests = await prisma.budget_request.findMany({
@@ -19,7 +14,7 @@ export async function findMany(filter: any, options: any = {}) {
       }
     },
     ...options
-  }) as BudgetRequestWithItems[];
+  });
 
   // Calculate aggregated amounts from items
   const requestsWithAggregates = budgetRequests.map(request => {
