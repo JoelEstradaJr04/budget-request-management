@@ -753,24 +753,6 @@ const BudgetRequestPage = () => {
           </div>
 
           <div className="filters">
-            {/* Export dropdown */}
-            <div className="export-dropdown">
-              <button className="export-dropdown-toggle">
-                <i className="ri-download-line" /> Export
-              </button>
-              <div className="export-dropdown-menu">
-                <button onClick={() => handleExport('csv')}>
-                  <i className="ri-file-text-line" /> CSV
-                </button>
-                <button onClick={() => handleExport('excel')}>
-                  <i className="ri-file-excel-line" /> Excel
-                </button>
-                <button onClick={() => handleExport('pdf')}>
-                  <i className="ri-file-pdf-line" /> PDF
-                </button>
-              </div>
-            </div>
-
             {/* Add New Request */}
             <button onClick={() => openModal('add')} id="addButton" className="addButton">
                 <i className="ri-add-line" />New Request
