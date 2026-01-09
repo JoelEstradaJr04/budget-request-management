@@ -1,9 +1,10 @@
 'use client';
 
-import React from 'react';
+import React, { useState } from 'react';
 import "../../../styles/budget-management/viewBudgetRequest.css";
-import { formatDate, formatDateTime } from '../../../utils/dateFormatter';
+import { formatDate } from '../../../utils/formatting';
 import ModalHeader from '../../../Components/ModalHeader';
+import ItemTableModal, { ItemField } from '../../../Components/ItemTableModal';
 
 // Types - using the same as your existing BudgetRequest interface
 interface BudgetItem {
@@ -14,6 +15,17 @@ interface BudgetItem {
   requested_amount: number;
   notes?: string;
   pr_item_id?: number;
+  // Enhanced item fields for PR integration
+  item_code?: string;
+  item_name?: string;
+  department?: string;
+  unit_measure?: string;
+  supplier_code?: string;
+  supplier_name?: string;
+  supplier_unit_measure?: string;
+  conversion_factor?: number;
+  unit_price?: number;
+  quantity?: number;
 }
 
 interface BudgetRequest {
@@ -56,6 +68,8 @@ const ViewBudgetRequest: React.FC<ViewBudgetRequestProps> = ({
   onExport,
   showActions = true 
 }) => {
+  const [showItemsModal, setShowItemsModal] = useState(false);
+  const isPRLinked = !!request.pr_reference_code;
   
   // Status badge component (reuse from your main page)
   const StatusBadge = ({ status }: { status: string }) => {
@@ -160,6 +174,26 @@ const ViewBudgetRequest: React.FC<ViewBudgetRequestProps> = ({
     return history;
   };
 
+  // Map budget items to ItemTableModal format
+  const mapItemsToTableFormat = (): ItemField[] => {
+    if (!items || items.length === 0) return [];
+    
+    return items.map(item => ({
+      code: request.pr_reference_code || '',
+      department: item.department || request.department_name || '',
+      item_code: item.item_code || 'N/A',
+      item_name: item.item_name || item.description || '',
+      unit_measure: item.unit_measure || '',
+      supplier_code: item.supplier_code || 'N/A',
+      supplier_name: item.supplier_name || '',
+      supplier_unit_measure: item.supplier_unit_measure || '',
+      conversion: item.conversion_factor || 1,
+      unit_price: item.unit_price || 0,
+      subtotal: item.requested_amount || 0,
+      quantity: item.quantity || 0
+    }));
+  };
+
   return (
     <div className="modalOverlay">
       <div className="viewBudgetRequestModal">
@@ -196,7 +230,7 @@ const ViewBudgetRequest: React.FC<ViewBudgetRequestProps> = ({
               
               <div className="displayField displayFieldHalf">
                 <label>Date of Request</label>
-                <div className="displayValue">{formatDate(request.request_date)}</div>
+                <div className="displayValue">{formatDate(new Date(request.request_date))}</div>
               </div>
             </div>
 
@@ -276,35 +310,16 @@ const ViewBudgetRequest: React.FC<ViewBudgetRequestProps> = ({
                   <div className="itemsCount">{items.length} item{items.length !== 1 ? 's' : ''}</div>
                 </div>
 
-                {items.map((item, index) => (
-                  <div key={index} className="itemDisplayContainer">
-                    <div className="itemDisplayGrid">
-                      <div className="itemDisplayField">
-                        <label>Description</label>
-                        <div className="itemDisplayValue">{item.description || 'No description'}</div>
-                      </div>
+                <button
+                  type="button"
+                  className="showItemsBtn"
+                  onClick={() => setShowItemsModal(true)}
+                  style={{ marginTop: '10px', width: '100%' }}
+                >
+                  <i className="ri-eye-line" /> View All Items
+                </button>
 
-                      <div className="itemDisplayField">
-                        <label>Requested Amount</label>
-                        <div className="itemDisplayValue">
-                          ₱{Number(item.requested_amount).toLocaleString(undefined, { 
-                            minimumFractionDigits: 2, 
-                            maximumFractionDigits: 2 
-                          })}
-                        </div>
-                      </div>
-
-                      {item.notes && (
-                        <div className="itemDisplayField">
-                          <label>Notes</label>
-                          <div className="itemDisplayValue">{item.notes}</div>
-                        </div>
-                      )}
-                    </div>
-                  </div>
-                ))}
-
-                <div className="totalAmountDisplayView">
+                <div className="totalAmountDisplayView" style={{ marginTop: '15px' }}>
                   <h3>Total Amount from Items</h3>
                   <div className="totalAmountValueView">
                     ₱{calculateItemsTotal().toLocaleString(undefined, { 
@@ -331,8 +346,8 @@ const ViewBudgetRequest: React.FC<ViewBudgetRequestProps> = ({
                   <div className="displayField displayFieldHalf">
                     <label>{request.status === 'APPROVED' ? 'Approval Date' : 'Rejection Date'}</label>
                     <div className="displayValue">
-                      {request.status === 'APPROVED' && request.approved_at ? formatDate(request.approved_at) :
-                       request.status === 'REJECTED' && request.rejected_at ? formatDate(request.rejected_at) :
+                      {request.status === 'APPROVED' && request.approved_at ? formatDate(new Date(request.approved_at)) :
+                       request.status === 'REJECTED' && request.rejected_at ? formatDate(new Date(request.rejected_at)) :
                        <span className="displayValueEmpty">Not specified</span>}
                     </div>
                   </div>
@@ -361,7 +376,7 @@ const ViewBudgetRequest: React.FC<ViewBudgetRequestProps> = ({
                     </div>
                   </div>
                   <div className="actionHistoryDate">
-                    {formatDateTime(action.date)}
+                    {formatDate(new Date(action.date))}
                   </div>
                 </div>
               ))}
@@ -384,6 +399,15 @@ const ViewBudgetRequest: React.FC<ViewBudgetRequestProps> = ({
           </div>
         )}
       </div>
+
+      <ItemTableModal
+        isOpen={showItemsModal}
+        onClose={() => setShowItemsModal(false)}
+        mode="view"
+        title="Budget Request Items"
+        items={mapItemsToTableFormat()}
+        isLinkedToPurchaseRequest={isPRLinked}
+      />
     </div>
   );
 };

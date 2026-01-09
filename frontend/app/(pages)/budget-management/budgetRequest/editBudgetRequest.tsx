@@ -401,23 +401,13 @@ const EditBudgetRequest: React.FC<EditBudgetRequestProps> = ({
               <div className="itemsSection">
                 <div className="itemsHeader">
                   <h3>Budget Items</h3>
-                  {!isPRLinked && (
-                    <button
-                      type="button"
-                      className="itemsToggle"
-                      onClick={() => setShowItems(!showItems)}
-                    >
-                      <i className={`ri-${showItems ? 'eye-off' : 'eye'}-line`} />
-                      {showItems ? 'Hide Items' : 'Show Items'}
-                    </button>
-                  )}
                 </div>
 
-                {isPRLinked && (
+                {isPRLinked ? (
                   <div className="prLinkSection">
                     <p className="info-message">
                       <i className="ri-information-line" /> This request is linked to Purchase Request: <strong>{request.pr_reference_code}</strong>
-                      <br />Items from PR are not editable.
+                      <br />Items from this PR are read-only and cannot be modified.
                     </p>
                     <button
                       type="button"
@@ -425,72 +415,51 @@ const EditBudgetRequest: React.FC<EditBudgetRequestProps> = ({
                       onClick={() => setShowItemsModal(true)}
                       style={{ marginTop: '10px' }}
                     >
-                      <i className="ri-eye-line" /> Show Items
+                      <i className="ri-eye-line" /> View PR Items ({items.length})
                     </button>
-                  </div>
-                )}
-
-                {showItems && (
-                  <>
-                    {items.map((item, index) => (
-                      <div key={index} className="itemContainer">
-                        <div className="itemHeader">
-                          <h4>Item #{index + 1}</h4>
-                          {!isPRLinked && (
-                            <button
-                              type="button"
-                              className="removeItemBtn"
-                              onClick={() => removeItem(index)}
-                              disabled={items.length === 1}
-                              title="Remove Item"
-                            >
-                              <i className="ri-close-line" />
-                            </button>
-                          )}
+                    {items.length > 0 && (
+                      <div className="totalAmountDisplay" style={{ marginTop: '15px' }}>
+                        <h3>Total from PR Items</h3>
+                        <div className="totalAmountValue">
+                          ₱{items.reduce((sum, item) => sum + item.requested_amount, 0).toLocaleString(undefined, { 
+                            minimumFractionDigits: 2, 
+                            maximumFractionDigits: 2 
+                          })}
                         </div>
+                      </div>
+                    )}
+                  </div>
+                ) : (
+                  <>
+                    {items.length === 0 ? (
+                      <div className="emptyItemsMessage">
+                        <p>No items added yet.</p>
+                        <button
+                          type="button"
+                          className="addItemBtn"
+                          onClick={addItem}
+                        >
+                          <i className="ri-add-line" /> Add First Item
+                        </button>
+                      </div>
+                    ) : (
+                      <>
+                        {items.map((item, index) => (
+                          <div key={index} className="itemContainer">
+                            <div className="itemHeader">
+                              <h4>Item #{index + 1}</h4>
+                              <button
+                                type="button"
+                                className="removeItemBtn"
+                                onClick={() => removeItem(index)}
+                                disabled={items.length === 1}
+                                title="Remove Item"
+                              >
+                                <i className="ri-close-line" />
+                              </button>
+                            </div>
 
-                        <div className="itemGrid">
-                          {isPRLinked ? (
-                            <>
-                              <div className="itemField">
-                                <label>Item Code</label>
-                                <input type="text" value={item.item_code || ''} readOnly disabled className="formInput" />
-                              </div>
-                              <div className="itemField">
-                                <label>Item Name</label>
-                                <input type="text" value={item.item_name || ''} readOnly disabled className="formInput" />
-                              </div>
-                              <div className="itemField">
-                                <label>Department</label>
-                                <input type="text" value={item.department || ''} readOnly disabled className="formInput" />
-                              </div>
-                              <div className="itemField">
-                                <label>Unit Measure</label>
-                                <input type="text" value={item.unit_measure || ''} readOnly disabled className="formInput" />
-                              </div>
-                              <div className="itemField">
-                                <label>Quantity</label>
-                                <input type="number" value={item.quantity || 0} readOnly disabled className="formInput" />
-                              </div>
-                              <div className="itemField">
-                                <label>Unit Price</label>
-                                <input type="number" value={item.unit_price || 0} readOnly disabled className="formInput" />
-                              </div>
-                              <div className="itemField">
-                                <label>Subtotal</label>
-                                <input type="number" value={item.requested_amount} readOnly disabled className="formInput calculated" />
-                              </div>
-                              <div className="itemField">
-                                <label>Supplier Code</label>
-                                <input type="text" value={item.supplier_code || ''} readOnly disabled className="formInput" />
-                              </div>
-                              <div className="itemField">
-                                <label>Supplier Name</label>
-                                <input type="text" value={item.supplier_name || ''} readOnly disabled className="formInput" />
-                              </div>
-                            </>
-                          ) : (
-                            <>
+                            <div className="itemGrid">
                               <div className="itemField">
                                 <label>Item Name<span className='requiredTags'> *</span></label>
                                 <input
@@ -551,32 +520,28 @@ const EditBudgetRequest: React.FC<EditBudgetRequestProps> = ({
                                   placeholder="Enter supplier name"
                                 />
                               </div>
-                            </>
-                          )}
-                        </div>
-                      </div>
-                    ))}
+                            </div>
+                          </div>
+                        ))}
 
-                    {!isPRLinked && (
-                      <button
-                        type="button"
-                        className="addItemBtn"
-                        onClick={addItem}
-                      >
-                        <i className="ri-add-line" /> Add Another Item
-                      </button>
-                    )}
+                        <button
+                          type="button"
+                          className="addItemBtn"
+                          onClick={addItem}
+                        >
+                          <i className="ri-add-line" /> Add Another Item
+                        </button>
 
-                    {items.length > 0 && (
-                      <div className="totalAmountDisplay">
-                        <h3>Total Amount from Items</h3>
-                        <div className="totalAmountValue">
-                          ₱{items.reduce((sum, item) => sum + item.requested_amount, 0).toLocaleString(undefined, { 
-                            minimumFractionDigits: 2, 
-                            maximumFractionDigits: 2 
-                          })}
+                        <div className="totalAmountDisplay">
+                          <h3>Total Amount from Items</h3>
+                          <div className="totalAmountValue">
+                            ₱{items.reduce((sum, item) => sum + item.requested_amount, 0).toLocaleString(undefined, { 
+                              minimumFractionDigits: 2, 
+                              maximumFractionDigits: 2 
+                            })}
+                          </div>
                         </div>
-                      </div>
+                      </>
                     )}
                   </>
                 )}
@@ -605,7 +570,7 @@ const EditBudgetRequest: React.FC<EditBudgetRequestProps> = ({
           items={mapItemsToTableFormat()}
           readOnlyFields={[]}
           requiredFields={[]}
-          displayMode="PRLinked"
+          isLinkedToPurchaseRequest={isPRLinked}
         />
       )}
     </div>
