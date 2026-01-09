@@ -89,7 +89,6 @@ const EditBudgetRequest: React.FC<EditBudgetRequestProps> = ({
   const [showItems, setShowItems] = useState((request.items?.length || 0) > 0);
   const [validationErrors, setValidationErrors] = useState<Record<string, string>>({});
   const [isFormValid, setIsFormValid] = useState(false);
-  const [showItemsModal, setShowItemsModal] = useState(false);
 
   const validationRules: Record<FieldName, ValidationRule> = {
     purpose: { required: true, label: "Budget Purpose", min: 10, max: 500 },
@@ -409,14 +408,20 @@ const EditBudgetRequest: React.FC<EditBudgetRequestProps> = ({
                       <i className="ri-information-line" /> This request is linked to Purchase Request: <strong>{request.pr_reference_code}</strong>
                       <br />Items from this PR are read-only and cannot be modified.
                     </p>
-                    <button
-                      type="button"
-                      className="showItemsBtn"
-                      onClick={() => setShowItemsModal(true)}
-                      style={{ marginTop: '10px' }}
-                    >
-                      <i className="ri-eye-line" /> View PR Items ({items.length})
-                    </button>
+                    
+                    {/* Embedded ItemTableModal for PR-linked items */}
+                    <ItemTableModal
+                      isOpen={true}
+                      onClose={() => {}}
+                      mode="view"
+                      title={`Items from PR: ${request.pr_reference_code}`}
+                      items={mapItemsToTableFormat()}
+                      readOnlyFields={[]}
+                      requiredFields={[]}
+                      isLinkedToPurchaseRequest={true}
+                      embedded={true}
+                    />
+                    
                     {items.length > 0 && (
                       <div className="totalAmountDisplay" style={{ marginTop: '15px' }}>
                         <h3>Total from PR Items</h3>
@@ -559,20 +564,6 @@ const EditBudgetRequest: React.FC<EditBudgetRequestProps> = ({
           </div>
         </form>
       </div>
-
-      {/* ItemTableModal for PR-linked items */}
-      {isPRLinked && showItemsModal && (
-        <ItemTableModal
-          isOpen={showItemsModal}
-          onClose={() => setShowItemsModal(false)}
-          mode="view"
-          title={`Items from PR: ${request.pr_reference_code}`}
-          items={mapItemsToTableFormat()}
-          readOnlyFields={[]}
-          requiredFields={[]}
-          isLinkedToPurchaseRequest={isPRLinked}
-        />
-      )}
     </div>
   );
 };

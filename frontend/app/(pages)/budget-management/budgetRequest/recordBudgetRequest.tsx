@@ -82,7 +82,6 @@ const AddBudgetRequest: React.FC<AddBudgetRequestProps> = ({
 
   const [items, setItems] = useState<BudgetItem[]>([]);
   const [showItems, setShowItems] = useState(false);
-  const [showItemsModal, setShowItemsModal] = useState(false);
   const [isPRLinked, setIsPRLinked] = useState(false);
   const [prReferenceCode, setPrReferenceCode] = useState('');
   const [supportingDocuments, setSupportingDocuments] = useState<File[]>([]);
@@ -753,14 +752,6 @@ const AddBudgetRequest: React.FC<AddBudgetRequestProps> = ({
                       />
                       <span>Link to Purchase Request</span>
                     </label>
-                    <button
-                      type="button"
-                      className="itemsToggle"
-                      onClick={() => setShowItemsModal(true)}
-                    >
-                      <i className="ri-list-check" />
-                      Manage Items
-                    </button>
                   </div>
                 </div>
 
@@ -785,6 +776,20 @@ const AddBudgetRequest: React.FC<AddBudgetRequestProps> = ({
                     </div>
                   </div>
                 )}
+
+                {/* Embedded ItemTableModal - shows different fields based on PR link status */}
+                <ItemTableModal
+                  isOpen={true}
+                  onClose={() => {}}
+                  mode={isPRLinked ? "view" : "add"}
+                  title={isPRLinked ? "PR Items (View Only)" : "Manage Budget Items"}
+                  items={mapItemsToTableFormat()}
+                  onSave={handleSaveItems}
+                  readOnlyFields={isPRLinked ? ['code', 'department', 'item_code', 'supplier_code'] : []}
+                  requiredFields={['item_name', 'quantity', 'unit_measure', 'unit_price', 'supplier_name']}
+                  isLinkedToPurchaseRequest={isPRLinked}
+                  embedded={true}
+                />
 
                 {items.length > 0 && (
                   <div className="totalAmountDisplay">
@@ -947,21 +952,6 @@ const AddBudgetRequest: React.FC<AddBudgetRequestProps> = ({
           </div>
         </form>
       </div>
-
-      {/* ItemTableModal */}
-      {showItemsModal && (
-        <ItemTableModal
-          isOpen={showItemsModal}
-          onClose={() => setShowItemsModal(false)}
-          mode="add"
-          title="Manage Budget Items"
-          items={mapItemsToTableFormat()}
-          onSave={handleSaveItems}
-          readOnlyFields={isPRLinked ? ['code', 'department', 'item_code', 'supplier_code'] : []}
-          requiredFields={['item_name', 'quantity', 'unit_measure', 'unit_price', 'supplier_name']}
-          isLinkedToPurchaseRequest={isPRLinked}
-        />
-      )}
     </div>
   );
 };
