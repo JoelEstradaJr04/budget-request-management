@@ -302,7 +302,6 @@ button {
 .data-table td:nth-child(6) {
   position: sticky !important;
   right: 120px !important;
-  background-color: var(--foreground-color) !important;
   min-width: 120px !important;
   z-index: 2 !important;
   box-shadow: -2px 0 4px rgba(0, 0, 0, 0.1) !important;
@@ -317,7 +316,6 @@ button {
 .data-table td:nth-child(7) {
   position: sticky !important;
   right: 0 !important;
-  background-color: var(--foreground-color) !important;
   min-width: 120px !important;
   z-index: 2 !important;
   box-shadow: -2px 0 4px rgba(0, 0, 0, 0.1) !important;
