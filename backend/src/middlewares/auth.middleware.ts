@@ -9,8 +9,6 @@ export const verifyJWT = (req: Request, res: Response, next: NextFunction) => {
   try {
     // If JWT is disabled, create a mock user context for testing
     if (env.DISABLE_AUTH) {
-      console.log('⚠️  JWT Validation is DISABLED - Using mock user for testing');
-      
       // Create mock user based on x-mock-role header (for testing different roles)
       const mockRole = (req.headers['x-mock-role'] as string) || 'SuperAdmin';
       const mockDepartment = (req.headers['x-mock-department'] as string) || 'finance';
