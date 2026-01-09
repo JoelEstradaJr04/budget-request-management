@@ -6,6 +6,33 @@ import '@/styles/components/modal2.css';
 import '@/styles/components/forms.css';
 import '@/styles/components/table.css';
 
+/**
+ * ItemField Interface
+ * 
+ * Field Mappings for Purchase Request Integration:
+ * 
+ * When isLinkedToPurchaseRequest = true (PR-Linked Mode):
+ * - code                    → purchase_request.purchase_request_code
+ * - department              → purchase_request.requestor.department_name
+ * - item_code               → items[].item_code OR 'N/A' (if new_item is used)
+ * - item_name               → items[].item.item_name OR items[].new_item
+ * - unit_measure            → items[].item.unit.unit_name OR items[].new_unit
+ * - supplier_code           → items[].supplier_code OR 'N/A' (if new_supplier is used)
+ * - supplier_name           → items[].supplier.supplier_name OR items[].new_supplier
+ * - supplier_unit_measure   → items[].supplier_item.supplier_unit.unit_name OR items[].new_unit
+ * - conversion              → items[].supplier_item.conversion_amount
+ * - unit_price              → items[].supplier_item.unit_price OR items[].new_unit_price
+ * - quantity                → items[].quantity
+ * - subtotal                → calculated (quantity * unit_price)
+ * 
+ * When isLinkedToPurchaseRequest = false (Manual Entry Mode):
+ * - quantity                → User input
+ * - item_name               → User input
+ * - unit_measure            → User input
+ * - unit_price              → User input
+ * - supplier_name           → User input
+ * - subtotal                → Calculated (quantity * unit_price)
+ */
 export interface ItemField {
   code?: string;
   department?: string;
@@ -23,7 +50,6 @@ export interface ItemField {
 }
 
 export type ModalMode = 'view' | 'edit' | 'add';
-export type DisplayMode = 'PRLinked' | 'NoLinked';
 
 export interface ItemTableModalProps {
   isOpen: boolean;
@@ -34,7 +60,7 @@ export interface ItemTableModalProps {
   onSave?: (items: ItemField[]) => void;
   readOnlyFields?: string[];
   requiredFields?: string[];
-  displayMode?: DisplayMode;
+  isLinkedToPurchaseRequest?: boolean;
 }
 
 const ItemTableModal: React.FC<ItemTableModalProps> = ({
@@ -46,14 +72,14 @@ const ItemTableModal: React.FC<ItemTableModalProps> = ({
   onSave,
   readOnlyFields = [],
   requiredFields = [],
-  displayMode = 'PRLinked'
+  isLinkedToPurchaseRequest = false
 }) => {
-  // Field visibility configuration based on display mode
+  // Field visibility configuration based on purchase request link status
   const getVisibleFields = (): string[] => {
-    if (displayMode === 'NoLinked') {
+    if (!isLinkedToPurchaseRequest) {
       return ['quantity', 'item_name', 'unit_measure', 'unit_price', 'supplier_name', 'subtotal'];
     }
-    // PRLinked shows all fields
+    // PR-linked shows all fields
     return ['code', 'department', 'item_code', 'item_name', 'unit_measure', 'supplier_code', 'supplier_name', 'supplier_unit_measure', 'conversion', 'unit_price', 'quantity', 'subtotal'];
   };
 
@@ -182,8 +208,8 @@ const ItemTableModal: React.FC<ItemTableModalProps> = ({
 
       <div className="modal-content">
         <form className="add-form">
-          {displayMode === 'PRLinked' ? (
-            // PRLinked Mode - All Fields
+          {isLinkedToPurchaseRequest ? (
+            // PR-Linked Mode - All Fields
             <>
               <div className="form-row">
                 <div className="form-group">
@@ -310,7 +336,7 @@ const ItemTableModal: React.FC<ItemTableModalProps> = ({
             <table>
               <thead>
                 <tr>
-                  {displayMode === 'PRLinked' ? (
+                  {isLinkedToPurchaseRequest ? (
                     <>
                       <th>Item Name</th>
                       <th>Quantity</th>
@@ -332,11 +358,11 @@ const ItemTableModal: React.FC<ItemTableModalProps> = ({
               </thead>
               <tbody>
                 {filteredItems.length === 0 ? (
-                  <tr><td colSpan={displayMode === 'PRLinked' ? (mode !== 'view' ? 5 : 4) : (mode !== 'view' ? 7 : 6)} className="empty-cell">No items found</td></tr>
+                  <tr><td colSpan={isLinkedToPurchaseRequest ? (mode !== 'view' ? 5 : 4) : (mode !== 'view' ? 7 : 6)} className="empty-cell">No items found</td></tr>
                 ) : (
                   filteredItems.map((item, index) => (
                     <tr key={index} onClick={() => handleRowSelect(index)} style={{ cursor: mode !== 'view' ? 'pointer' : 'default', backgroundColor: selectedIndex === index ? 'var(--table-row-hover-color)' : undefined }}>
-                      {displayMode === 'PRLinked' ? (
+                      {isLinkedToPurchaseRequest ? (
                         <>
                           <td>{item.item_name || 'N/A'}</td>
                           <td>{item.quantity || 0}</td>
