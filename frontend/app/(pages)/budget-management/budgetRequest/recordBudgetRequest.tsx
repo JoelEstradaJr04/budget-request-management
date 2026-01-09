@@ -56,6 +56,19 @@ interface AddBudgetRequestProps {
 
 type FieldName = 'purpose' | 'justification' | 'amountRequested' | 'start_date' | 'end_date' | 'fiscalPeriod' | 'category' | 'priority' | 'urgencyReason';
 
+const mockPrCodes = [
+  'PR-2024-001',
+  'PR-2024-002',
+  'PR-2024-003',
+  'PR-2024-004',
+  'PR-2024-005',
+  'PR-2024-006',
+  'PR-2024-007',
+  'PR-2024-008',
+  'PR-2024-009',
+  'PR-2024-010',
+];
+
 const AddBudgetRequest: React.FC<AddBudgetRequestProps> = ({
   onClose,
   onAddBudgetRequest,
@@ -84,6 +97,8 @@ const AddBudgetRequest: React.FC<AddBudgetRequestProps> = ({
   const [showItems, setShowItems] = useState(false);
   const [isPRLinked, setIsPRLinked] = useState(false);
   const [prReferenceCode, setPrReferenceCode] = useState('');
+  const [prCodeSearch, setPrCodeSearch] = useState('');
+  const [showPrDropdown, setShowPrDropdown] = useState(false);
   const [supportingDocuments, setSupportingDocuments] = useState<File[]>([]);
   const [dragOver, setDragOver] = useState(false);
   const [validationErrors, setValidationErrors] = useState<Record<string, string>>({});
@@ -742,7 +757,7 @@ const AddBudgetRequest: React.FC<AddBudgetRequestProps> = ({
               {/* Items Section */}
               <div className="itemsSection">
                 <div className="itemsHeader">
-                  <h3>Budget Items (Optional)</h3>
+                  <h3>Budget Items</h3>
                   <div className="itemsControls">
                     <label className="prLinkToggle">
                       <input
@@ -757,22 +772,51 @@ const AddBudgetRequest: React.FC<AddBudgetRequestProps> = ({
 
                 {isPRLinked && (
                   <div className="prLinkSection">
-                    <div className="formField">
+                    <div className="formField" style={{ position: 'relative' }}>
                       <label htmlFor="prReferenceCode">Purchase Request Code<span className='requiredTags'> *</span></label>
                       <div className="prSearchContainer">
                         <input
                           type="text"
                           id="prReferenceCode"
-                          value={prReferenceCode}
-                          onChange={(e) => setPrReferenceCode(e.target.value)}
-                          placeholder="Enter PR code (e.g., PR-2024-001)"
+                          value={prCodeSearch || prReferenceCode}
+                          onChange={e => {
+                            setPrCodeSearch(e.target.value);
+                            setShowPrDropdown(true);
+                          }}
+                          onFocus={() => setShowPrDropdown(true)}
+                          placeholder="Search or select PR code"
                           className="formInput"
+                          autoComplete="off"
                         />
-                        <button type="button" className="prSearchBtn" title="Search PR">
+                        <button type="button" className="prSearchBtn" title="Search PR" tabIndex={-1}>
                           <i className="ri-search-line" />
                         </button>
+                        {showPrDropdown && (
+                          <div className="dropdown pr-dropdown" style={{ position: 'absolute', top: '100%', left: 0, right: 0, zIndex: 10, background: '#fff', border: '1px solid #ccc', maxHeight: 180, overflowY: 'auto' }}>
+                            {mockPrCodes.filter(code => (prCodeSearch ? code.toLowerCase().includes(prCodeSearch.toLowerCase()) : true)).length === 0 ? (
+                              <div className="dropdown-item" style={{ padding: 8, color: '#888' }}>No results</div>
+                            ) : (
+                              mockPrCodes
+                                .filter(code => (prCodeSearch ? code.toLowerCase().includes(prCodeSearch.toLowerCase()) : true))
+                                .map(code => (
+                                  <div
+                                    key={code}
+                                    className="dropdown-item"
+                                    style={{ padding: 8, cursor: 'pointer' }}
+                                    onMouseDown={() => {
+                                      setPrReferenceCode(code);
+                                      setPrCodeSearch(code);
+                                      setShowPrDropdown(false);
+                                    }}
+                                  >
+                                    {code}
+                                  </div>
+                                ))
+                            )}
+                          </div>
+                        )}
                       </div>
-                      <span className="field-note">Enter the Purchase Request code to link items</span>
+                      <span className="field-note">Select the Purchase Request code to link items</span>
                     </div>
                   </div>
                 )}
