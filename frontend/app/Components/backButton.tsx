@@ -7,18 +7,18 @@ import { ArrowLeft } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 const backButtonVariants = cva(
-  "inline-flex items-center justify-center gap-2 whitespace-nowrap text-sm font-medium transition-all disabled:pointer-events-none disabled:opacity-50 cursor-pointer shadow-sm border border-gray-200",
+  "inline-flex items-center justify-center gap-2 whitespace-nowrap text-sm font-medium transition-all duration-300 disabled:pointer-events-none disabled:opacity-50 cursor-pointer shadow-sm border border-gray-200 hover:scale-[1.03]",
   {
     variants: {
       variant: {
         default:
-          "bg-white text-gray-700 hover:bg-gray-50 rounded-lg",
+          "bg-white text-gray-700 hover:bg-[#961C1E] hover:text-white hover:border-[#961C1E] rounded-lg",
         outline:
-          "bg-white text-gray-700 hover:bg-gray-50 rounded-lg",
+          "bg-white text-gray-700 hover:bg-[#961C1E] hover:text-white hover:border-[#961C1E] rounded-lg",
         secondary:
           "bg-secondary text-secondary-foreground shadow-xs hover:bg-secondary/80 rounded-lg",
         ghost:
-          "bg-white text-gray-700 hover:bg-gray-50 rounded-lg border-0 shadow-none",
+          "bg-white text-gray-700 hover:bg-[#961C1E] hover:text-white hover:border-[#961C1E] rounded-lg border-0 shadow-none",
       },
       size: {
         default: "h-10 px-4 py-2",
