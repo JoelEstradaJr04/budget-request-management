@@ -333,26 +333,8 @@ const BudgetRequestPage = () => {
         break;
         
       case 'APPROVED':
+        break;
       case 'ADJUSTED':
-      case 'CLOSED':
-        buttons.push(
-          <button 
-            key="export"
-            className="exportBtn" 
-            onClick={() => handleExportSingle(item)}
-            title="Export Request"
-          >
-            <i className="ri-download-line" />
-          </button>,
-          <button 
-            key="audit"
-            className="auditBtn" 
-            onClick={() => handleAuditTrail(item.id)}
-            title="View Audit Trail"
-          >
-            <i className="ri-history-line" />
-          </button>
-        );
         break;
     }
 
