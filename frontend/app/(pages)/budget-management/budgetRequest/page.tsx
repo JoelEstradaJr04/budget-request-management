@@ -818,6 +818,7 @@ const BudgetRequestPage = () => {
             <table className="data-table">
               <thead>
                 <tr>
+                  <th>No.</th>
                   <th onClick={() => handleSort('department_name')} className="sortable">
                     Department
                     {sortField === 'department_name' && (
@@ -858,7 +859,7 @@ const BudgetRequestPage = () => {
                 </tr>
               </thead>
               <tbody>
-                {currentRecords.map(item => (
+                {currentRecords.map((item, index) => (
                   <tr 
                     key={item.id}
                     onClick={(e) => {
@@ -869,6 +870,7 @@ const BudgetRequestPage = () => {
                     }}
                     style={{ cursor: 'pointer' }}
                   >
+                    <td>{(currentPage - 1) * pageSize + index + 1}</td>
                     <td>{item.department_name || 'N/A'}</td>
                     <td>{formatDate(item.created_at)}</td>
                     <td>
