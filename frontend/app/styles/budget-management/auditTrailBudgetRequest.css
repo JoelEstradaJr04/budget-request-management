@@ -340,10 +340,6 @@
   position: relative;
 }
 
-.closeButton:hover {
-	background-color: var(--table-header-color) !important;
-}
-
 
 .exportAuditBtn {
   background: var(--secondary-color) !important;

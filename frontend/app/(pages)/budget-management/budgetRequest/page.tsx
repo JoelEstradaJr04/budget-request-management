@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useState, useEffect } from "react";
+import { useRouter } from 'next/navigation';
 import "../../../styles/components/table.css";
 import "../../../styles/components/chips.css";
 import "../../../styles/budget-management/budgetRequest.css";
@@ -63,6 +64,7 @@ interface BudgetRequest {
 }
 
 const BudgetRequestPage = () => {
+  const router = useRouter();
   const { user } = useAuth();
   const [data, setData] = useState<BudgetRequest[]>([]);
   const [loading, setLoading] = useState(true);
@@ -711,17 +713,86 @@ const BudgetRequestPage = () => {
     }
   };
 
+
   if (loading) {
-          return (
-              <div className="card">
-                  <h1 className="title">Budget Request</h1>
-                  <Loading />
-              </div>
-          );
-      }
+    return (
+      <>
+        {/* Back Button */}
+      <div style={{
+          display: 'flex',
+          flexDirection: 'row',
+          width: '100%',
+          justifyContent: 'flex-start',
+          alignItems: 'flex-start',
+          margin: 10,
+          background: 'none',
+          border: 'none',
+          cursor: 'pointer',
+          fontSize: 28,
+          zIndex: 10,
+          paddingLeft: 30
+        }}>
+          <button
+          onClick={() => router.back()}
+          style={{
+            display: 'flex',
+            justifyContent: 'flex-start',
+            alignItems: 'center',
+            background: 'none',
+            border: 'none',
+            cursor: 'pointer',
+            fontSize: 28,
+            zIndex: 10
+          }}
+          aria-label="Go back"
+        >
+          <i className="ri-arrow-left-long-line"></i>
+        </button>
+      </div>
+        <div className="card">
+          <h1 className="title">Budget Request</h1>
+          <Loading />
+        </div>
+      </>
+    );
+  }
 
   return (
-    <div className="card">
+    <>
+      {/* Back Button */}
+      <div style={{
+          display: 'flex',
+          flexDirection: 'row',
+          width: '100%',
+          justifyContent: 'flex-start',
+          alignItems: 'flex-start',
+          margin: 10,
+          background: 'none',
+          border: 'none',
+          cursor: 'pointer',
+          fontSize: 28,
+          zIndex: 10,
+          paddingLeft: 30
+        }}>
+        <button
+        onClick={() => router.back()}
+        style={{
+          display: 'flex',
+          justifyContent: 'flex-start',
+          alignItems: 'center',
+          background: 'none',
+          border: 'none',
+          cursor: 'pointer',
+          fontSize: 28,
+          zIndex: 10
+        }}
+        aria-label="Go back"
+      >
+        <i className="ri-arrow-left-long-line"></i>
+      </button>
+      </div>
+      
+      <div className="card">
       <div className="elements">
         <div className="title">
           <h1>Budget Requests</h1>
@@ -872,6 +943,7 @@ const BudgetRequestPage = () => {
         {isModalOpen && modalContent}
       </div>
     </div>
+    </>
   );
 };
 

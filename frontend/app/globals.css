@@ -386,7 +386,7 @@ body {
   margin: 0 !important;
 }
 
-.closeButton, .close-btn {
+/* .closeButton, .close-btn {
   background: transparent !important;
   border: 1px solid var(--border-color) !important;
   color: var(--secondary-text-color) !important;
@@ -408,7 +408,7 @@ body {
   border-color: var(--error-color) !important;
   color: white !important;
   transform: none !important;
-}
+} */
 
 .closeButton i, .close-btn i {
   font-size: 1.25rem !important;

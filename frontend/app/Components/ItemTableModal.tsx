@@ -61,6 +61,7 @@ export interface ItemTableModalProps {
   readOnlyFields?: string[];
   requiredFields?: string[];
   isLinkedToPurchaseRequest?: boolean;
+  embedded?: boolean;
 }
 
 const ItemTableModal: React.FC<ItemTableModalProps> = ({
@@ -72,7 +73,8 @@ const ItemTableModal: React.FC<ItemTableModalProps> = ({
   onSave,
   readOnlyFields = [],
   requiredFields = [],
-  isLinkedToPurchaseRequest = false
+  isLinkedToPurchaseRequest = false,
+  embedded = false
 }) => {
   // Field visibility configuration based on purchase request link status
   const getVisibleFields = (): string[] => {
@@ -197,16 +199,21 @@ const ItemTableModal: React.FC<ItemTableModalProps> = ({
     });
   };
 
-  return (
-    <Modal isOpen={isOpen} onClose={onClose}>
-      <div className="modal-heading">
-        <h2 className="modal-title">{title}</h2>
-        <button className="close-modal-btn" onClick={onClose}>
-          <i className="ri-close-line" />
-        </button>
-      </div>
+  // Content to render (shared between modal and embedded modes)
+  const renderContent = () => (
+    <>
+      {!embedded && (
+        <div className="modal-heading">
+          <h2 className="modal-title">{title}</h2>
+          <button className="close-modal-btn" onClick={onClose}>
+            <i className="ri-close-line" />
+          </button>
+        </div>
+      )}
 
-      <div className="modal-content">
+      <div className={embedded ? "embedded-item-table" : "modal-content"}>
+        {/* Only show add/edit form when NOT PR-linked */}
+        {!isLinkedToPurchaseRequest && (
         <form className="add-form">
           {isLinkedToPurchaseRequest ? (
             // PR-Linked Mode - All Fields
@@ -325,6 +332,7 @@ const ItemTableModal: React.FC<ItemTableModalProps> = ({
             </div>
           )}
         </form>
+        )}
 
         <div className="form-group" style={{ marginTop: '20px' }}>
           <label>Search Items</label>
@@ -403,18 +411,30 @@ const ItemTableModal: React.FC<ItemTableModalProps> = ({
         )}
       </div>
 
-      {mode !== 'view' && (
+      {/* Only show save/close buttons when not embedded and not PR-linked */}
+      {!embedded && mode !== 'view' && !isLinkedToPurchaseRequest && (
         <div className="modal-actions">
           <button type="button" className="cancel-btn" onClick={onClose}>Close</button>
           <button type="button" className="submit-btn" onClick={handleSave}><i className="ri-save-line" />Save All Items</button>
         </div>
       )}
 
-      {mode === 'view' && (
+      {!embedded && mode === 'view' && (
         <div className="modal-actions">
           <button type="button" className="cancel-btn" onClick={onClose}>Close</button>
         </div>
       )}
+    </>
+  );
+
+  // Return embedded content directly or wrap in Modal
+  if (embedded) {
+    return <div className="item-table-embedded">{renderContent()}</div>;
+  }
+
+  return (
+    <Modal isOpen={isOpen} onClose={onClose}>
+      {renderContent()}
     </Modal>
   );
 };
