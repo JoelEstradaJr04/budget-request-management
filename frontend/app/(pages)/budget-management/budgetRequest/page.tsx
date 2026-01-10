@@ -687,7 +687,7 @@ const BudgetRequestPage = () => {
       {/* Back Button */}
       <div style={{display: 'flex', flex: 1, width:'100%', paddingLeft: 30, paddingTop: 10, paddingBottom: 10}}>
         <div style={{ display: 'flex', top: '1rem', left: '1rem', zIndex: 10 }}>
-          <BackButton variant="default" size="default" aria-label="Go back" />
+          <BackButton variant="default" size="default"  href={process.env.NEXT_PUBLIC_MAIN_FRONTEND_URL} aria-label="Go back" />
         </div>
       </div>
         <div className="card">
