@@ -24,7 +24,7 @@ interface BudgetItem {
   supplier_name?: string;
   supplier_unit_measure?: string;
   conversion_factor?: number;
-  unit_price?: number;
+  unit_cost?: number;
   quantity?: number;
 }
 
@@ -115,7 +115,7 @@ const ViewBudgetRequest: React.FC<ViewBudgetRequestProps> = ({
   // Calculate total from items if available
   const calculateItemsTotal = () => {
     if (items.length === 0) return 0;
-    return items.reduce((total, item) => total + item.requested_amount, 0);
+    return items.reduce((total, item) => total + Number(item.requested_amount || 0), 0);
   };
 
   // Format file size
@@ -178,19 +178,32 @@ const ViewBudgetRequest: React.FC<ViewBudgetRequestProps> = ({
   const mapItemsToTableFormat = (): ItemField[] => {
     if (!items || items.length === 0) return [];
     
-    return items.map(item => ({
-      code: request.pr_reference_code || '',
-      department: item.department || request.department_name || '',
-      item_code: item.item_code || 'N/A',
-      item_name: item.item_name || item.description || '',
-      unit_measure: item.unit_measure || '',
-      supplier_code: item.supplier_code || 'N/A',
-      supplier_name: item.supplier_name || '',
-      supplier_unit_measure: item.supplier_unit_measure || '',
-      conversion: item.conversion_factor || 1,
-      unit_price: item.unit_price || 0,
-      subtotal: item.requested_amount || 0,
-      quantity: item.quantity || 0
+    // If linked to PR, items might have detailed PR data
+    if (isPRLinked) {
+      return items.map(item => ({
+        code: request.pr_reference_code || '',
+        department: item.department || request.department_name || '',
+        item_code: item.item_code || 'N/A',
+        item_name: item.item_name || item.description || 'N/A',
+        unit_measure: item.unit_measure || 'N/A',
+        supplier_code: item.supplier_code || 'N/A',
+        supplier_name: item.supplier_name || 'N/A',
+        supplier_unit_measure: item.supplier_unit_measure || 'N/A',
+        conversion: Number(item.conversion_factor || 1),
+        unit_cost: Number(item.unit_cost || 0),
+        subtotal: Number(item.requested_amount || 0),
+        quantity: Number(item.quantity || 1)
+      }));
+    }
+    
+    // For non-PR items, use basic budget_request_item schema fields
+    return items.map((item, index) => ({
+      item_name: item.description || `Item ${index + 1}`,
+      quantity: 1, // Not stored in basic schema
+      unit_measure: 'N/A',
+      unit_cost: Number(item.requested_amount || 0),
+      supplier_name: item.notes || 'N/A',
+      subtotal: Number(item.requested_amount || 0)
     }));
   };
 
