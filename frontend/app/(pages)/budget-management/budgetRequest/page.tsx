@@ -318,28 +318,11 @@ const BudgetRequestPage = () => {
           </button>
         );
         break;
-      
-      case 'REJECTED':
-        buttons.push(
-          <button 
-            key="export"
-            className="exportBtn" 
-            onClick={() => handleExportSingle(item)}
-            title="Export Request"
-          >
-            <i className="ri-download-line" />
-          </button>
-        );
-        break;
-        
-      case 'APPROVED':
-        break;
-      case 'ADJUSTED':
-        break;
     }
 
     return buttons;
   };
+
 
   // Add Budget Request - Updated to match new schema
   const handleAddBudgetRequest = async (newRequest: any) => {
