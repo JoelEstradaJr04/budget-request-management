@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useState, useEffect } from "react";
+import { useRouter } from 'next/navigation';
 import "../../../styles/components/table.css";
 import "../../../styles/components/chips.css";
 import "../../../styles/budget-management/budgetRequest.css";
@@ -20,6 +21,7 @@ import budgetRequestService, {
   RejectionDto 
 } from '../../../services/budgetRequest.service';
 import { useAuth } from '../../../contexts/AuthContext';
+import { BackButton } from '../../../Components/backButton';
 
 
 
@@ -63,6 +65,7 @@ interface BudgetRequest {
 }
 
 const BudgetRequestPage = () => {
+  const router = useRouter();
   const { user } = useAuth();
   const [data, setData] = useState<BudgetRequest[]>([]);
   const [loading, setLoading] = useState(true);
@@ -316,46 +319,11 @@ const BudgetRequestPage = () => {
           </button>
         );
         break;
-      
-      case 'REJECTED':
-        buttons.push(
-          <button 
-            key="export"
-            className="exportBtn" 
-            onClick={() => handleExportSingle(item)}
-            title="Export Request"
-          >
-            <i className="ri-download-line" />
-          </button>
-        );
-        break;
-        
-      case 'APPROVED':
-      case 'ADJUSTED':
-      case 'CLOSED':
-        buttons.push(
-          <button 
-            key="export"
-            className="exportBtn" 
-            onClick={() => handleExportSingle(item)}
-            title="Export Request"
-          >
-            <i className="ri-download-line" />
-          </button>,
-          <button 
-            key="audit"
-            className="auditBtn" 
-            onClick={() => handleAuditTrail(item.id)}
-            title="View Audit Trail"
-          >
-            <i className="ri-history-line" />
-          </button>
-        );
-        break;
     }
 
     return buttons;
   };
+
 
   // Add Budget Request - Updated to match new schema
   const handleAddBudgetRequest = async (newRequest: any) => {
@@ -711,17 +679,36 @@ const BudgetRequestPage = () => {
     }
   };
 
+
   if (loading) {
-          return (
-              <div className="card">
-                  <h1 className="title">Budget Request</h1>
-                  <Loading />
-              </div>
-          );
-      }
+    return (
+      <>
+        {/* Back Button */}
+      {/* Back Button */}
+      <div style={{display: 'flex', flex: 1, width:'100%', paddingLeft: 30, paddingTop: 10, paddingBottom: 10}}>
+        <div style={{ display: 'flex', top: '1rem', left: '1rem', zIndex: 10 }}>
+          <BackButton variant="default" size="default"  href={process.env.NEXT_PUBLIC_MAIN_FRONTEND_URL} aria-label="Go back" />
+        </div>
+      </div>
+        <div className="card">
+          <h1 className="title">Budget Request</h1>
+          <Loading />
+        </div>
+      </>
+    );
+  }
 
   return (
-    <div className="card">
+    <>
+      {/* Back Button */}
+      <div style={{display: 'flex', flex: 1, width:'100%', paddingLeft: 30, paddingTop: 10, paddingBottom: 10}}>
+        <div style={{ display: 'flex', top: '1rem', left: '1rem', zIndex: 10 }}>
+          <BackButton variant="default" size="default" href={process.env.NEXT_PUBLIC_MAIN_FRONTEND_URL} aria-label="Go back" />
+        </div>
+      </div>
+     
+      
+      <div className="card">
       <div className="elements">
         <div className="title">
           <h1>Budget Requests</h1>
@@ -765,6 +752,7 @@ const BudgetRequestPage = () => {
             <table className="data-table">
               <thead>
                 <tr>
+                  <th>No.</th>
                   <th onClick={() => handleSort('department_name')} className="sortable">
                     Department
                     {sortField === 'department_name' && (
@@ -805,7 +793,7 @@ const BudgetRequestPage = () => {
                 </tr>
               </thead>
               <tbody>
-                {currentRecords.map(item => (
+                {currentRecords.map((item, index) => (
                   <tr 
                     key={item.id}
                     onClick={(e) => {
@@ -816,6 +804,7 @@ const BudgetRequestPage = () => {
                     }}
                     style={{ cursor: 'pointer' }}
                   >
+                    <td>{(currentPage - 1) * pageSize + index + 1}</td>
                     <td>{item.department_name || 'N/A'}</td>
                     <td>{formatDate(item.created_at)}</td>
                     <td>
@@ -870,6 +859,7 @@ const BudgetRequestPage = () => {
         {isModalOpen && modalContent}
       </div>
     </div>
+    </>
   );
 };
 

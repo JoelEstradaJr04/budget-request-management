@@ -23,7 +23,7 @@ interface BudgetItem {
   supplier_name?: string;
   supplier_unit_measure?: string;
   conversion_factor?: number;
-  unit_price?: number;
+  unit_cost?: number;
   quantity?: number;
 }
 
@@ -32,7 +32,7 @@ interface NewBudgetRequest {
   justification: string; // Will be mapped to 'remarks' by parent
   department: string;
   createdByName: string;
-  createdByRole: string;
+  createdByPosition: string;
   amountRequested: number; // Will be mapped to 'total_amount' by parent
   fiscalYear: number;
   fiscalPeriod: string;
@@ -56,6 +56,19 @@ interface AddBudgetRequestProps {
 
 type FieldName = 'purpose' | 'justification' | 'amountRequested' | 'start_date' | 'end_date' | 'fiscalPeriod' | 'category' | 'priority' | 'urgencyReason';
 
+const mockPrCodes = [
+  'PR-2024-001',
+  'PR-2024-002',
+  'PR-2024-003',
+  'PR-2024-004',
+  'PR-2024-005',
+  'PR-2024-006',
+  'PR-2024-007',
+  'PR-2024-008',
+  'PR-2024-009',
+  'PR-2024-010',
+];
+
 const AddBudgetRequest: React.FC<AddBudgetRequestProps> = ({
   onClose,
   onAddBudgetRequest,
@@ -68,7 +81,7 @@ const AddBudgetRequest: React.FC<AddBudgetRequestProps> = ({
     justification: '',
     department: 'Finance', // Auto-filled
     createdByName: 'Finance Admin', // Auto-filled
-    createdByRole: 'Admin', // Auto-filled
+    createdByPosition: 'Admin', // Auto-filled
     fiscalYear: 2025,
     fiscalPeriod: '',
     category: '',
@@ -82,9 +95,10 @@ const AddBudgetRequest: React.FC<AddBudgetRequestProps> = ({
 
   const [items, setItems] = useState<BudgetItem[]>([]);
   const [showItems, setShowItems] = useState(false);
-  const [showItemsModal, setShowItemsModal] = useState(false);
   const [isPRLinked, setIsPRLinked] = useState(false);
   const [prReferenceCode, setPrReferenceCode] = useState('');
+  const [prCodeSearch, setPrCodeSearch] = useState('');
+  const [showPrDropdown, setShowPrDropdown] = useState(false);
   const [supportingDocuments, setSupportingDocuments] = useState<File[]>([]);
   const [dragOver, setDragOver] = useState(false);
   const [validationErrors, setValidationErrors] = useState<Record<string, string>>({});
@@ -246,7 +260,7 @@ const AddBudgetRequest: React.FC<AddBudgetRequestProps> = ({
       supplier_name: '',
       supplier_unit_measure: '',
       conversion_factor: 1,
-      unit_price: 0,
+      unit_cost: 0,
       quantity: 0
     }]);
   };
@@ -260,11 +274,11 @@ const AddBudgetRequest: React.FC<AddBudgetRequestProps> = ({
       const updated = [...prev];
       updated[index] = { ...updated[index], [field]: value };
       
-      // Auto-calculate requested_amount (subtotal) when quantity or unit_price changes
-      if (field === 'quantity' || field === 'unit_price') {
+      // Auto-calculate requested_amount (subtotal) when quantity or unit_cost changes
+      if (field === 'quantity' || field === 'unit_cost') {
         const item = updated[index];
         const qty = field === 'quantity' ? Number(value) : (item.quantity || 0);
-        const price = field === 'unit_price' ? Number(value) : (item.unit_price || 0);
+        const price = field === 'unit_cost' ? Number(value) : (item.unit_cost || 0);
         updated[index].requested_amount = qty * price;
       }
       
@@ -431,7 +445,7 @@ const AddBudgetRequest: React.FC<AddBudgetRequestProps> = ({
       item_name: item.item_name || '',
       unit_measure: item.unit_measure || '',
       quantity: item.quantity || 0,
-      unit_price: item.unit_price || 0,
+      unit_cost: item.unit_cost || 0,
       supplier_name: item.supplier_name || '',
       subtotal: item.requested_amount || 0
     }));
@@ -452,7 +466,7 @@ const AddBudgetRequest: React.FC<AddBudgetRequestProps> = ({
       supplier_name: item.supplier_name || '',
       supplier_unit_measure: '',
       conversion_factor: 1,
-      unit_price: item.unit_price || 0,
+      unit_cost: item.unit_cost || 0,
       quantity: item.quantity || 0
     }));
     setItems(mappedItems);
@@ -504,12 +518,12 @@ const AddBudgetRequest: React.FC<AddBudgetRequestProps> = ({
 
               <div className="formRow">
                 <div className="formField formFieldHalf">
-                  <label htmlFor="createdByRole">Requester Role</label>
+                  <label htmlFor="createdByPosition">Requester Position</label>
                   <input
                     type="text"
-                    id="createdByRole"
-                    name="createdByRole"
-                    value={formData.createdByRole}
+                    id="createdByPosition"
+                    name="createdByPosition"
+                    value={formData.createdByPosition}
                     readOnly
                     className="formInput"
                   />
@@ -743,7 +757,7 @@ const AddBudgetRequest: React.FC<AddBudgetRequestProps> = ({
               {/* Items Section */}
               <div className="itemsSection">
                 <div className="itemsHeader">
-                  <h3>Budget Items (Optional)</h3>
+                  <h3>Budget Items</h3>
                   <div className="itemsControls">
                     <label className="prLinkToggle">
                       <input
@@ -753,38 +767,73 @@ const AddBudgetRequest: React.FC<AddBudgetRequestProps> = ({
                       />
                       <span>Link to Purchase Request</span>
                     </label>
-                    <button
-                      type="button"
-                      className="itemsToggle"
-                      onClick={() => setShowItemsModal(true)}
-                    >
-                      <i className="ri-list-check" />
-                      Manage Items
-                    </button>
                   </div>
                 </div>
 
                 {isPRLinked && (
                   <div className="prLinkSection">
-                    <div className="formField">
+                    <div className="formField" style={{ position: 'relative' }}>
                       <label htmlFor="prReferenceCode">Purchase Request Code<span className='requiredTags'> *</span></label>
                       <div className="prSearchContainer">
                         <input
                           type="text"
                           id="prReferenceCode"
-                          value={prReferenceCode}
-                          onChange={(e) => setPrReferenceCode(e.target.value)}
-                          placeholder="Enter PR code (e.g., PR-2024-001)"
+                          value={prCodeSearch || prReferenceCode}
+                          onChange={e => {
+                            setPrCodeSearch(e.target.value);
+                            setShowPrDropdown(true);
+                          }}
+                          onFocus={() => setShowPrDropdown(true)}
+                          placeholder="Search or select PR code"
                           className="formInput"
+                          autoComplete="off"
                         />
-                        <button type="button" className="prSearchBtn" title="Search PR">
+                        <button type="button" className="prSearchBtn" title="Search PR" tabIndex={-1}>
                           <i className="ri-search-line" />
                         </button>
+                        {showPrDropdown && (
+                          <div className="dropdown pr-dropdown" style={{ position: 'absolute', top: '100%', left: 0, right: 0, zIndex: 10, background: '#fff', border: '1px solid #ccc', maxHeight: 180, overflowY: 'auto' }}>
+                            {mockPrCodes.filter(code => (prCodeSearch ? code.toLowerCase().includes(prCodeSearch.toLowerCase()) : true)).length === 0 ? (
+                              <div className="dropdown-item" style={{ padding: 8, color: '#888' }}>No results</div>
+                            ) : (
+                              mockPrCodes
+                                .filter(code => (prCodeSearch ? code.toLowerCase().includes(prCodeSearch.toLowerCase()) : true))
+                                .map(code => (
+                                  <div
+                                    key={code}
+                                    className="dropdown-item"
+                                    style={{ padding: 8, cursor: 'pointer' }}
+                                    onMouseDown={() => {
+                                      setPrReferenceCode(code);
+                                      setPrCodeSearch(code);
+                                      setShowPrDropdown(false);
+                                    }}
+                                  >
+                                    {code}
+                                  </div>
+                                ))
+                            )}
+                          </div>
+                        )}
                       </div>
-                      <span className="field-note">Enter the Purchase Request code to link items</span>
+                      <span className="field-note">Select the Purchase Request code to link items</span>
                     </div>
                   </div>
                 )}
+
+                {/* Embedded ItemTableModal - shows different fields based on PR link status */}
+                <ItemTableModal
+                  isOpen={true}
+                  onClose={() => {}}
+                  mode={isPRLinked ? "view" : "add"}
+                  title={isPRLinked ? "PR Items (View Only)" : "Manage Budget Items"}
+                  items={mapItemsToTableFormat()}
+                  onSave={handleSaveItems}
+                  readOnlyFields={isPRLinked ? ['code', 'department', 'item_code', 'supplier_code'] : []}
+                  requiredFields={['item_name', 'quantity', 'unit_measure', 'unit_cost', 'supplier_name']}
+                  isLinkedToPurchaseRequest={isPRLinked}
+                  embedded={true}
+                />
 
                 {items.length > 0 && (
                   <div className="totalAmountDisplay">
@@ -947,21 +996,6 @@ const AddBudgetRequest: React.FC<AddBudgetRequestProps> = ({
           </div>
         </form>
       </div>
-
-      {/* ItemTableModal */}
-      {showItemsModal && (
-        <ItemTableModal
-          isOpen={showItemsModal}
-          onClose={() => setShowItemsModal(false)}
-          mode="add"
-          title="Manage Budget Items"
-          items={mapItemsToTableFormat()}
-          onSave={handleSaveItems}
-          readOnlyFields={isPRLinked ? ['code', 'department', 'item_code', 'supplier_code'] : []}
-          requiredFields={['item_name', 'quantity', 'unit_measure', 'unit_price', 'supplier_name']}
-          isLinkedToPurchaseRequest={isPRLinked}
-        />
-      )}
     </div>
   );
 };

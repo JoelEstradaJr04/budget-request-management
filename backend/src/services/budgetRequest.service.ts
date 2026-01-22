@@ -203,6 +203,11 @@ export function checkAccess(budgetRequest: any, user: UserContext): boolean {
   // SuperAdmin: full access
   if (user.role === 'SuperAdmin') return true;
 
+  // Finance Admin: full access to all budget requests
+  if (user.role.includes('Finance') && user.role.includes('Admin')) {
+    return true;
+  }
+
   // Department Admin: own department only
   if (user.role.includes('Admin')) {
     return budgetRequest.department_id === user.department;

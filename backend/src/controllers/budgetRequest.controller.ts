@@ -1,7 +1,6 @@
 // src/controllers/budgetRequest.controller.ts
 import { Request, Response } from 'express';
 import * as service from '../services/budgetRequest.service';
-import auditLogger from '../services/auditLogger.service';
 import webhookDispatcher from '../webhooks/dispatcher';
 import { applyAccessFilter } from '../middlewares/permission.middleware';
 import { successResponse, successResponseWithPagination, errorResponse, notFoundResponse, forbiddenResponse } from '../utils/response.util';
@@ -102,14 +101,6 @@ export async function getBudgetRequest(req: Request, res: Response) {
       return forbiddenResponse(res, 'You do not have permission to view this budget request');
     }
 
-    // Log view action (don't await - fire and forget for performance)
-    auditLogger.view({
-      id: budgetRequest.id,
-      requestCode: budgetRequest.request_code
-    }, req.user!).catch(err => {
-      console.error('Audit log error:', err.message);
-    });
-
     return successResponse(res, budgetRequest, 'Budget request retrieved successfully');
   } catch (error: any) {
     console.error('Get budget request error:', error);
@@ -122,14 +113,6 @@ export async function createBudgetRequest(req: Request, res: Response) {
     console.log('Creating budget request with data:', JSON.stringify(req.body, null, 2));
     
     const budgetRequest = await service.create(req.body, req.user!);
-
-    // Log creation
-    await auditLogger.create({
-      id: budgetRequest.id,
-      requestCode: budgetRequest.request_code,
-      department: budgetRequest.department_id,
-      amountRequested: budgetRequest.total_amount
-    }, req.user!).catch(err => console.error('Audit log error:', err.message));
 
     // Dispatch webhook (fire and forget)
     webhookDispatcher.dispatch('budget_request.created', {
@@ -172,13 +155,6 @@ export async function submitBudgetRequest(req: Request, res: Response) {
     // Submit (schema uses PENDING as pending state)
     const updated = await service.submit(Number(id), req.user!);
 
-    // Log submission
-    await auditLogger.submit({
-      id: updated.id,
-      requestCode: updated.request_code,
-      amountRequested: updated.total_amount
-    }, req.user!).catch(err => console.error('Audit log error:', err.message));
-
     // Dispatch webhook
     webhookDispatcher.dispatch('budget_request.submitted', {
       budgetRequestId: updated.id,
@@ -214,14 +190,6 @@ export async function approveBudgetRequest(req: Request, res: Response) {
     // Approve budget request
     const approved = await service.approve(Number(id), req.body, req.user!);
 
-    // Log approval
-    await auditLogger.approve({
-      id: approved.id,
-      requestCode: approved.request_code,
-      amountRequested: approved.total_amount,
-      approvedBy: req.user!.id
-    }, req.user!).catch(err => console.error('Audit log error:', err.message));
-
     // Dispatch webhook
     webhookDispatcher.dispatch('budget_request.approved', {
       budgetRequestId: approved.id,
@@ -256,15 +224,6 @@ export async function rejectBudgetRequest(req: Request, res: Response) {
 
     // Reject budget request
     const rejected = await service.reject(Number(id), req.body, req.user!);
-
-    // Log rejection
-    await auditLogger.reject({
-      id: rejected.id,
-      requestCode: rejected.request_code,
-      amountRequested: rejected.total_amount,
-      rejectedBy: req.user!.id,
-      reason: req.body.rejection_reason
-    }, req.user!).catch(err => console.error('Audit log error:', err.message));
 
     // Dispatch webhook
     webhookDispatcher.dispatch('budget_request.rejected', {

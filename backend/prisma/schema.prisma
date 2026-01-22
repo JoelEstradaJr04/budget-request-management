@@ -58,6 +58,7 @@ request_code        String                  @unique @default(cuid())
 department_id       String
 department_name     String?
 requested_by        String    // system-generated current user
+requester_position  String
 requested_for       String?   // optional, only admins can set
 request_date        DateTime                @default(now())
 total_amount        Decimal                 @db.Decimal(14,2)

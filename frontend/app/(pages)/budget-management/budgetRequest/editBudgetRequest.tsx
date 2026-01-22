@@ -24,7 +24,7 @@ interface BudgetItem {
   supplier_name?: string;
   supplier_unit_measure?: string;
   conversion_factor?: number;
-  unit_price?: number;
+  unit_cost?: number;
   quantity?: number;
 }
 
@@ -89,7 +89,6 @@ const EditBudgetRequest: React.FC<EditBudgetRequestProps> = ({
   const [showItems, setShowItems] = useState((request.items?.length || 0) > 0);
   const [validationErrors, setValidationErrors] = useState<Record<string, string>>({});
   const [isFormValid, setIsFormValid] = useState(false);
-  const [showItemsModal, setShowItemsModal] = useState(false);
 
   const validationRules: Record<FieldName, ValidationRule> = {
     purpose: { required: true, label: "Budget Purpose", min: 10, max: 500 },
@@ -152,7 +151,7 @@ const EditBudgetRequest: React.FC<EditBudgetRequestProps> = ({
       supplier_name: '',
       supplier_unit_measure: '',
       conversion_factor: 1,
-      unit_price: 0,
+      unit_cost: 0,
       quantity: 0
     }]);
   };
@@ -166,9 +165,9 @@ const EditBudgetRequest: React.FC<EditBudgetRequestProps> = ({
       const updated = [...prev];
       updated[index] = { ...updated[index], [field]: value };
       
-      if (field === 'quantity' || field === 'unit_price') {
+      if (field === 'quantity' || field === 'unit_cost') {
         const qty = field === 'quantity' ? Number(value) : (updated[index].quantity || 0);
-        const price = field === 'unit_price' ? Number(value) : (updated[index].unit_price || 0);
+        const price = field === 'unit_cost' ? Number(value) : (updated[index].unit_cost || 0);
         updated[index].requested_amount = qty * price;
       }
       
@@ -220,7 +219,7 @@ const EditBudgetRequest: React.FC<EditBudgetRequestProps> = ({
       supplier_name: item.supplier_name || '',
       supplier_unit_measure: item.supplier_unit_measure || '',
       conversion: item.conversion_factor || 1,
-      unit_price: item.unit_price || 0,
+      unit_cost: item.unit_cost || 0,
       subtotal: item.requested_amount || 0,
       quantity: item.quantity || 0
     }));
@@ -409,14 +408,20 @@ const EditBudgetRequest: React.FC<EditBudgetRequestProps> = ({
                       <i className="ri-information-line" /> This request is linked to Purchase Request: <strong>{request.pr_reference_code}</strong>
                       <br />Items from this PR are read-only and cannot be modified.
                     </p>
-                    <button
-                      type="button"
-                      className="showItemsBtn"
-                      onClick={() => setShowItemsModal(true)}
-                      style={{ marginTop: '10px' }}
-                    >
-                      <i className="ri-eye-line" /> View PR Items ({items.length})
-                    </button>
+                    
+                    {/* Embedded ItemTableModal for PR-linked items */}
+                    <ItemTableModal
+                      isOpen={true}
+                      onClose={() => {}}
+                      mode="view"
+                      title={`Items from PR: ${request.pr_reference_code}`}
+                      items={mapItemsToTableFormat()}
+                      readOnlyFields={[]}
+                      requiredFields={[]}
+                      isLinkedToPurchaseRequest={true}
+                      embedded={true}
+                    />
+                    
                     {items.length > 0 && (
                       <div className="totalAmountDisplay" style={{ marginTop: '15px' }}>
                         <h3>Total from PR Items</h3>
@@ -495,8 +500,8 @@ const EditBudgetRequest: React.FC<EditBudgetRequestProps> = ({
                                 <label>Unit Price<span className='requiredTags'> *</span></label>
                                 <input
                                   type="number"
-                                  value={item.unit_price || 0}
-                                  onChange={(e) => updateItem(index, 'unit_price', parseFloat(e.target.value) || 0)}
+                                  value={item.unit_cost || 0}
+                                  onChange={(e) => updateItem(index, 'unit_cost', parseFloat(e.target.value) || 0)}
                                   min="0"
                                   step="0.01"
                                   required
@@ -559,20 +564,6 @@ const EditBudgetRequest: React.FC<EditBudgetRequestProps> = ({
           </div>
         </form>
       </div>
-
-      {/* ItemTableModal for PR-linked items */}
-      {isPRLinked && showItemsModal && (
-        <ItemTableModal
-          isOpen={showItemsModal}
-          onClose={() => setShowItemsModal(false)}
-          mode="view"
-          title={`Items from PR: ${request.pr_reference_code}`}
-          items={mapItemsToTableFormat()}
-          readOnlyFields={[]}
-          requiredFields={[]}
-          isLinkedToPurchaseRequest={isPRLinked}
-        />
-      )}
     </div>
   );
 };

@@ -63,6 +63,16 @@ async function main() {
   const statuses: ('PENDING' | 'APPROVED' | 'REJECTED' | 'ADJUSTED' | 'CLOSED')[] = ['PENDING', 'APPROVED', 'REJECTED', 'ADJUSTED', 'CLOSED'];
   const users = ['user001', 'user002', 'user003', 'user004', 'user005', 'admin001', 'admin002'];
 
+  const requesterPositions = [
+  'Staff',
+  'Senior Staff',
+  'Supervisor',
+  'Manager',
+  'Senior Manager',
+  'Department Head',
+  'Director'
+  ];
+
   const budgetRequestsData = [];
 
   // Generate 25 budget requests with varied data
@@ -75,6 +85,7 @@ async function main() {
       department_id: departments[deptIndex],
       department_name: departmentNames[deptIndex],
       requested_by: users[Math.floor(Math.random() * users.length)],
+      requester_position: requesterPositions[Math.floor(Math.random() * requesterPositions.length)],
       requested_for: Math.random() > 0.5 ? `Project ${i}` : null,
       request_date: requestDate,
       total_amount: 0, // Will be calculated from items
@@ -84,14 +95,21 @@ async function main() {
       request_type: requestTypes[Math.floor(Math.random() * requestTypes.length)],
       pr_reference_code: Math.random() > 0.6 ? `PR-2025-${String(i).padStart(4, '0')}` : null,
       approved_by: status === 'APPROVED' || status === 'ADJUSTED' ? 'admin001' : null,
-      approved_at: status === 'APPROVED' || status === 'ADJUSTED' ? new Date(requestDate.getTime() + 3 * 24 * 60 * 60 * 1000) : null,
+      approved_at: status === 'APPROVED' || status === 'ADJUSTED'
+        ? new Date(requestDate.getTime() + 3 * 24 * 60 * 60 * 1000)
+        : null,
       rejected_by: status === 'REJECTED' ? 'admin001' : null,
-      rejected_at: status === 'REJECTED' ? new Date(requestDate.getTime() + 2 * 24 * 60 * 60 * 1000) : null,
-      rejection_reason: status === 'REJECTED' ? 'Insufficient budget allocation for this period' : null,
+      rejected_at: status === 'REJECTED'
+        ? new Date(requestDate.getTime() + 2 * 24 * 60 * 60 * 1000)
+        : null,
+      rejection_reason: status === 'REJECTED'
+        ? 'Insufficient budget allocation for this period'
+        : null,
       created_at: requestDate,
       updated_at: new Date(),
       is_deleted: false
     };
+
 
     budgetRequestsData.push(budgetRequest);
   }

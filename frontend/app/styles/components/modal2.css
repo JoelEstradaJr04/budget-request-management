@@ -9,7 +9,7 @@
     display: flex;
     align-items: center;
     justify-content: center;
-    z-index: 100;
+    z-index: 2000;
 }
 
 .modal {
@@ -59,7 +59,7 @@
     z-index: 10;
 }
 
-.close-modal-btn {
+.close-modal-btn, .closeButton {
     width: 30px;
     height: 30px;
     border: none;
@@ -74,7 +74,7 @@
     transition: all 0.3s ease-in-out;
 }
 
-.close-modal-btn:hover {
+.close-modal-btn:hover, .closeButton:hover {
     background-color: var(--table-row-hover-color)!important;
     transition: all 0.3s ease-in-out;
     transform: scale(1.2);
