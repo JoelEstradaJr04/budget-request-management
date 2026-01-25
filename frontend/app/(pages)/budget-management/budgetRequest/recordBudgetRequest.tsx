@@ -758,16 +758,6 @@ const AddBudgetRequest: React.FC<AddBudgetRequestProps> = ({
               <div className="itemsSection">
                 <div className="itemsHeader">
                   <h3>Budget Items</h3>
-                  <div className="itemsControls">
-                    <label className="prLinkToggle">
-                      <input
-                        type="checkbox"
-                        checked={isPRLinked}
-                        onChange={(e) => setIsPRLinked(e.target.checked)}
-                      />
-                      <span>Link to Purchase Request</span>
-                    </label>
-                  </div>
                 </div>
 
                 {isPRLinked && (
