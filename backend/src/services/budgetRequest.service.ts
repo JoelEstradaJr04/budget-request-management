@@ -236,7 +236,8 @@ export async function updateBudgetRequest(id: number, data: any, user: UserConte
       purpose: data.purpose,
       remarks: data.remarks,
       request_type: data.request_type,
-      department_name: data.department_name
+      department_name: data.department_name,
+      department_id: data.department || data.department_id
     },
     include: {
       items: {

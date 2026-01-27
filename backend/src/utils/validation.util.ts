@@ -4,11 +4,11 @@ import Joi from 'joi';
 export const budgetRequestSchema = Joi.object({
   // Accept both formats for backwards compatibility
   department: Joi.string()
-    .valid('finance', 'hr', 'inventory', 'operations')
+    .valid('finance', 'hr', 'inventory', 'operations', 'Finance', 'HR', 'Inventory', 'Operational')
     .optional(),
 
   department_id: Joi.string()
-    .valid('finance', 'hr', 'inventory', 'operations')
+    .valid('finance', 'hr', 'inventory', 'operations', 'Finance', 'HR', 'Inventory', 'Operational')
     .optional(),
 
   department_name: Joi.string().optional(),

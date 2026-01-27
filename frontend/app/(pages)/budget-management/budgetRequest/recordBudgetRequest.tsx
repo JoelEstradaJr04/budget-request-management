@@ -490,16 +490,21 @@ const AddBudgetRequest: React.FC<AddBudgetRequestProps> = ({
 
               <div className="formRow">
                 <div className="formField formFieldHalf">
-                  <label htmlFor="department">Department</label>
-                  <input
-                    type="text"
+                  <label htmlFor="department">Department<span className='requiredTags'> *</span></label>
+                  <select
                     id="department"
                     name="department"
                     value={formData.department}
-                    readOnly
-                    className="formInput"
-                  />
-                  <span className="autofill-note">Auto-filled based on current user</span>
+                    onChange={handleInputChange}
+                    required
+                    className="formSelect"
+                    disabled ={true}
+                  >
+                    <option value="Finance">Finance</option>
+                    <option value="HR">HR</option>
+                    <option value="Operational">Operational</option>
+                    <option value="Inventory">Inventory</option>
+                  </select>
                 </div>
 
                 <div className="formField formFieldHalf">
