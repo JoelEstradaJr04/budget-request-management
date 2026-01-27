@@ -59,7 +59,7 @@ export async function findById(id: number, options: any = {}) {
 
 export async function create(data: any, user: UserContext) {
   console.log('Service create called with data:', JSON.stringify(data, null, 2));
-  
+
   // Calculate total amount from items if not provided
   let totalAmount = data.total_amount || data.amountRequested || 0;
   if ((!totalAmount || totalAmount === 0) && data.items && data.items.length > 0) {
@@ -76,6 +76,7 @@ export async function create(data: any, user: UserContext) {
         department_id: data.department || data.department_id,
         department_name: data.department_name || null,
         requested_by: user.id,
+        requester_position: data.requester_position || data.position || 'Staff', // Default to Staff if missing
         requested_for: data.requested_for || null,
         total_amount: totalAmount,
         purpose: data.purpose || null,

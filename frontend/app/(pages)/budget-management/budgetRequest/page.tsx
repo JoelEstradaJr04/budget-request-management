@@ -281,6 +281,28 @@ const BudgetRequestPage = () => {
     );
   };
 
+  const RequestTypeBadge = ({ type }: { type: string }) => {
+    const getTypeClass = (type: string) => {
+      switch (type) {
+        case 'REGULAR': return 'normal';
+        case 'PROJECT_BASED': return 'single';
+        case 'URGENT': return 'urgent';
+        case 'EMERGENCY': return 'rejected'; // Red for emergency
+        default: return 'normal';
+      }
+    };
+
+    const formatType = (type: string) => {
+      return type.replace('_', ' ').toLowerCase().replace(/\b\w/g, l => l.toUpperCase());
+    };
+
+    return (
+      <span className={`chip ${getTypeClass(type)}`}>
+        {formatType(type)}
+      </span>
+    );
+  };
+
   // Action buttons based on status (Admin View)
   const getActionButtons = (item: BudgetRequest) => {
     const buttons = [];
@@ -319,6 +341,29 @@ const BudgetRequestPage = () => {
           </button>
         );
         break;
+      default:
+        // Pending requests can be edited or deleted before approval
+        buttons.push(
+          <button
+            key="edit"
+            className="editBtn"
+            onClick={() => handleEdit(item)}
+            title="Edit Request"
+            disabled={true}
+          >
+            <i className="ri-edit-2-line" />
+          </button>,
+          <button
+            key="delete"
+            className="deleteBtn"
+            onClick={() => handleDelete(item.id)}
+            title="Delete Request"
+            disabled={true}
+          >
+            <i className="ri-delete-bin-line" />
+          </button>
+        );
+        break;
     }
 
     return buttons;
@@ -344,29 +389,39 @@ const BudgetRequestPage = () => {
           newRequest.priority === 'high' ? 'PROJECT_BASED' :
             'REGULAR') as 'REGULAR' | 'PROJECT_BASED' | 'URGENT' | 'EMERGENCY',
         pr_reference_code: newRequest.pr_reference_code,
-        items: newRequest.items
+        items: newRequest.items,
+        status: newRequest.status
       };
 
       console.log('CreateDTO being sent:', createDto);
       console.log('Items in DTO:', createDto.items);
 
       const response = await budgetRequestService.create(createDto);
+      console.log('Create response:', response);
 
       if (response.success && response.data) {
+        console.log('Creation successful, refreshing list...');
         // Refresh the list by re-fetching
         const listResponse = await budgetRequestService.list({
           page: currentPage,
           limit: pageSize
         });
+        console.log('List refresh response:', listResponse);
 
         if (listResponse.success && listResponse.data) {
+          console.log('Setting new data:', listResponse.data);
           setData(listResponse.data);
         }
 
         showSuccess('Budget request created successfully', 'Success');
         closeModal();
       } else {
-        showError(response.error || 'Failed to create budget request', 'Error');
+        console.error('Creation failed:', response.error);
+        // Clean up error message
+        const errorMessage = response.error?.includes('requester_position')
+          ? 'Missing required field: Position'
+          : (response.error || 'Failed to create budget request');
+        showError(errorMessage, 'Creation Failed');
       }
     } catch (error: any) {
       console.error('Error creating budget request:', error);
@@ -808,9 +863,7 @@ const BudgetRequestPage = () => {
                       <td>{item.department_name || 'N/A'}</td>
                       <td>{formatDate(item.created_at)}</td>
                       <td>
-                        <span className={`priority-badge priority-${item.request_type?.toLowerCase()}`}>
-                          {item.request_type}
-                        </span>
+                        <RequestTypeBadge type={item.request_type} />
                       </td>
                       <td className="amount-cell">
                         ₱{Number(item.aggregated_requested_amount || item.total_amount).toLocaleString(undefined, {

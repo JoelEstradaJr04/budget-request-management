@@ -8,7 +8,7 @@ import { BudgetRequestCreate, BudgetRequestUpdate, BudgetRequestApproval, Budget
 
 export async function listBudgetRequests(req: Request, res: Response) {
   try {
-    const { 
+    const {
       page = 1,
       limit = 20,
       status,
@@ -16,16 +16,16 @@ export async function listBudgetRequests(req: Request, res: Response) {
       dateFrom,
       dateTo,
       priority,
-      search 
+      search
     } = req.query;
 
     // Helper function to check if value is valid (not undefined, null, empty, or string "undefined")
     const isValidValue = (value: any): boolean => {
-      return value !== undefined && 
-             value !== null && 
-             value !== '' && 
-             value !== 'undefined' && 
-             value !== 'null';
+      return value !== undefined &&
+        value !== null &&
+        value !== '' &&
+        value !== 'undefined' &&
+        value !== 'null';
     };
 
     // Build base filter (schema uses snake_case)
@@ -55,6 +55,8 @@ export async function listBudgetRequests(req: Request, res: Response) {
 
     // Apply role-based access control
     filter = applyAccessFilter(filter, req.user!);
+
+    console.log('List Filter:', JSON.stringify(filter, null, 2));
 
     // Fetch from database
     const skip = (Number(page) - 1) * Number(limit);
@@ -111,7 +113,12 @@ export async function getBudgetRequest(req: Request, res: Response) {
 export async function createBudgetRequest(req: Request, res: Response) {
   try {
     console.log('Creating budget request with data:', JSON.stringify(req.body, null, 2));
-    
+
+    // Force status to PENDING if not valid enum
+    if (req.body.status !== 'PENDING' && req.body.status !== 'APPROVED' && req.body.status !== 'REJECTED' && req.body.status !== 'ADJUSTED' && req.body.status !== 'CLOSED') {
+      req.body.status = 'PENDING';
+    }
+
     const budgetRequest = await service.create(req.body, req.user!);
 
     // Dispatch webhook (fire and forget)
@@ -142,7 +149,7 @@ export async function submitBudgetRequest(req: Request, res: Response) {
 
     // Get existing budget request
     const existing = await service.findById(Number(id));
-    
+
     if (!existing) {
       return notFoundResponse(res, 'Budget request');
     }
@@ -177,7 +184,7 @@ export async function approveBudgetRequest(req: Request, res: Response) {
 
     // Get existing budget request
     const existing = await service.findById(Number(id));
-    
+
     if (!existing) {
       return notFoundResponse(res, 'Budget request');
     }
@@ -212,7 +219,7 @@ export async function rejectBudgetRequest(req: Request, res: Response) {
 
     // Get existing budget request
     const existing = await service.findById(Number(id));
-    
+
     if (!existing) {
       return notFoundResponse(res, 'Budget request');
     }
