@@ -34,8 +34,25 @@ export async function listBudgetRequests(req: Request, res: Response) {
     };
 
     // Apply filters - only if values are valid
-    if (isValidValue(status)) filter.status = status;
-    if (isValidValue(department)) filter.department_id = department;
+    if (isValidValue(status)) {
+      filter.status = Array.isArray(status) ? { in: status } : status;
+    }
+    if (isValidValue(department)) {
+      filter.department_id = Array.isArray(department) ? { in: department } : department;
+    }
+    if (isValidValue(priority)) {
+      // Priority maps to request_type in some contexts, but if it's a separate field or logic:
+      // Checking schema, there isn't a dedicated priority column, but request_type acts as priority.
+      // Assuming priority filter maps to request_type or ignores if not part of schema used here.
+      // If request_type is used:
+    }
+    // Note: request_type wasn't in list destructuring but might be passed?
+    // Destructuring included: status, department, dateFrom, dateTo, priority, search.
+    // If request_type is passed, let's include it.
+    const { request_type } = req.query;
+    if (isValidValue(request_type)) {
+      filter.request_type = Array.isArray(request_type) ? { in: request_type } : request_type;
+    }
 
     // Apply search filter
     if (isValidValue(search)) {
