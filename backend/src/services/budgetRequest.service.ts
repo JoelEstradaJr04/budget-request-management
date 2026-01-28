@@ -87,6 +87,17 @@ export async function create(data: any, user: UserContext) {
       }
     });
 
+    // Generate formatted request code (BR-YYYY-XXXXX)
+    const year = new Date().getFullYear();
+    const sequence = br.id.toString().padStart(5, '0');
+    const formattedCode = `BR-${year}-${sequence}`;
+
+    // Update the request with the formatted code
+    await tx.budget_request.update({
+      where: { id: br.id },
+      data: { request_code: formattedCode }
+    });
+
     // Create request items if provided
     if (data.items && data.items.length > 0) {
       const mappedItems = data.items.map((item: any) => ({
