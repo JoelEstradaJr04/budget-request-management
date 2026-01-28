@@ -5,6 +5,7 @@ import webhookDispatcher from '../webhooks/dispatcher';
 import { applyAccessFilter } from '../middlewares/permission.middleware';
 import { successResponse, successResponseWithPagination, errorResponse, notFoundResponse, forbiddenResponse } from '../utils/response.util';
 import { BudgetRequestCreate, BudgetRequestUpdate, BudgetRequestApproval, BudgetRequestRejection } from '../types/budgetRequest.types';
+import { logAction } from '../services/audit.service';
 
 export async function listBudgetRequests(req: Request, res: Response) {
   try {
@@ -146,6 +147,16 @@ export async function createBudgetRequest(req: Request, res: Response) {
       amountRequested: Number(budgetRequest.total_amount)
     }).catch(err => console.error('Webhook error:', err.message));
 
+    // Audit Log
+    logAction({
+      entity_type: 'BUDGET_REQUEST',
+      entity_id: budgetRequest.id.toString(),
+      action_type_code: 'CREATE',
+      action_by: req.user!.id,
+      new_data: budgetRequest,
+      ip_address: req.ip
+    });
+
     return successResponse(
       res,
       budgetRequest,
@@ -188,6 +199,17 @@ export async function submitBudgetRequest(req: Request, res: Response) {
       createdBy: updated.requested_by
     }).catch(err => console.error('Webhook error:', err.message));
 
+    // Audit Log
+    logAction({
+      entity_type: 'BUDGET_REQUEST',
+      entity_id: updated.id.toString(),
+      action_type_code: 'UPDATE', // Or SUBMIT if available
+      action_by: req.user!.id,
+      previous_data: { status: existing.status },
+      new_data: { status: updated.status },
+      ip_address: req.ip
+    });
+
     return successResponse(res, updated, 'Budget request submitted successfully');
   } catch (error: any) {
     console.error('Submit budget request error:', error);
@@ -222,6 +244,17 @@ export async function approveBudgetRequest(req: Request, res: Response) {
       amountRequested: Number(approved.total_amount),
       approvedBy: req.user!.id
     }).catch(err => console.error('Webhook error:', err.message));
+
+    // Audit Log
+    logAction({
+      entity_type: 'BUDGET_REQUEST',
+      entity_id: approved.id.toString(),
+      action_type_code: 'APPROVE',
+      action_by: req.user!.id,
+      previous_data: { status: existing.status },
+      new_data: { status: approved.status, approval_notes: req.body.comments },
+      ip_address: req.ip
+    });
 
     return successResponse(res, approved, 'Budget request approved successfully');
   } catch (error: any) {
@@ -258,6 +291,17 @@ export async function rejectBudgetRequest(req: Request, res: Response) {
       rejectedBy: req.user!.id,
       reason: req.body.rejection_reason
     }).catch(err => console.error('Webhook error:', err.message));
+
+    // Audit Log
+    logAction({
+      entity_type: 'BUDGET_REQUEST',
+      entity_id: rejected.id.toString(),
+      action_type_code: 'REJECT',
+      action_by: req.user!.id,
+      previous_data: { status: existing.status },
+      new_data: { status: rejected.status, rejection_reason: req.body.rejection_reason },
+      ip_address: req.ip
+    });
 
     return successResponse(res, rejected, 'Budget request rejected successfully');
   } catch (error: any) {
