@@ -1,4 +1,7 @@
 // src/config/env.ts
+// Suppress dotenv/dotenvx console messages
+process.env.DOTENV_CONFIG_SILENT = 'true';
+
 import { config } from 'dotenv';
 import { z } from 'zod';
 
@@ -36,7 +39,11 @@ const envSchema = z.object({
   CORS_ORIGIN: z.string().optional(),
   
   // Webhook
-  WEBHOOK_SECRET: z.string().optional()
+  WEBHOOK_SECRET: z.string().optional(),
+
+  // API Documentation
+  ENABLE_API_DOCS: z.string().transform(val => val === 'true').default('false'),
+  API_DOCS_PATH: z.string().default('/docs')
 });
 
 export type Env = z.infer<typeof envSchema>;

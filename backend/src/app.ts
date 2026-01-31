@@ -5,12 +5,19 @@ import routes from './routes';
 import { errorHandler, notFoundHandler } from './middlewares/errorHandler.middleware';
 import { requestLogger } from './middlewares/requestLogger.middleware';
 import { apiLimiter } from './middlewares/rateLimit.middleware';
+import { setupSwagger, validateSwaggerSpec } from './middlewares/swagger.middleware';
+import { env } from './config/env';
 
 const app: Application = express();
 
+// Validate Swagger specification on startup (if enabled)
+if (env.ENABLE_API_DOCS) {
+  validateSwaggerSpec();
+}
+
 // CORS configuration
 app.use(cors({
-  origin: process.env.CORS_ORIGIN || '*',
+  origin: env.CORS_ORIGIN || '*',
   credentials: true
 }));
 
@@ -23,6 +30,9 @@ app.use(requestLogger);
 
 // Rate limiting
 app.use('/api', apiLimiter);
+
+// Setup Swagger/OpenAPI documentation (if enabled)
+setupSwagger(app);
 
 // API routes
 app.use('/api', routes);
