@@ -104,23 +104,23 @@ const EditBudgetRequest: React.FC<EditBudgetRequestProps> = ({
 
   const validateForm = (data: typeof formData): Record<string, string> => {
     const errors: Record<string, string> = {};
-    
+
     if (data.purpose.length < 10) errors.purpose = 'Purpose must be at least 10 characters';
     if (data.amountRequested <= 0) errors.amountRequested = 'Amount must be greater than 0';
     if (!data.fiscalPeriod) errors.fiscalPeriod = 'Fiscal period is required';
     if (!data.category) errors.category = 'Category is required';
-    
+
     if (showItems && items.length > 0) {
       const itemsTotal = items.reduce((sum, item) => sum + item.requested_amount, 0);
       if (data.amountRequested < itemsTotal) {
         errors.amountRequested = `Amount must be at least ₱${itemsTotal.toLocaleString()}`;
       }
     }
-    
+
     if (data.start_date && data.end_date && new Date(data.start_date) >= new Date(data.end_date)) {
       errors.end_date = 'End date must be after start date';
     }
-    
+
     return errors;
   };
 
@@ -164,13 +164,13 @@ const EditBudgetRequest: React.FC<EditBudgetRequestProps> = ({
     setItems(prev => {
       const updated = [...prev];
       updated[index] = { ...updated[index], [field]: value };
-      
+
       if (field === 'quantity' || field === 'unit_cost') {
         const qty = field === 'quantity' ? Number(value) : (updated[index].quantity || 0);
         const price = field === 'unit_cost' ? Number(value) : (updated[index].unit_cost || 0);
         updated[index].requested_amount = qty * price;
       }
-      
+
       return updated;
     });
   };
@@ -188,6 +188,7 @@ const EditBudgetRequest: React.FC<EditBudgetRequestProps> = ({
     if (result.isConfirmed) {
       try {
         await onUpdate(request.id, {
+          department: formData.department,
           purpose: formData.purpose,
           remarks: formData.justification,
           total_amount: formData.amountRequested,
@@ -233,14 +234,26 @@ const EditBudgetRequest: React.FC<EditBudgetRequestProps> = ({
         <form onSubmit={handleSubmit}>
           <div className="modalContent">
             <div className="formInputs">
-              
+
               {/* Request Information - NOT EDITABLE */}
               <div className="sectionHeader">Request Information (Read-only)</div>
-              
+
               <div className="formRow">
                 <div className="formField formFieldHalf">
-                  <label>Department</label>
-                  <input type="text" value={formData.department} readOnly disabled className="formInput" />
+                  <label>Department<span className='requiredTags'> *</span></label>
+                  <select
+                    name="department"
+                    value={formData.department}
+                    onChange={handleInputChange}
+                    required
+                    className="formSelect"
+                    disabled ={true}
+                  >
+                    <option value="Finance">Finance</option>
+                    <option value="HR">HR</option>
+                    <option value="Operational">Operational</option>
+                    <option value="Inventory">Inventory</option>
+                  </select>
                 </div>
                 <div className="formField formFieldHalf">
                   <label>Requester Name</label>
@@ -261,7 +274,7 @@ const EditBudgetRequest: React.FC<EditBudgetRequestProps> = ({
 
               {/* Budget Details - EDITABLE */}
               <div className="sectionHeader">Budget Details (Editable)</div>
-              
+
               <div className="formRow">
                 <div className="formField formFieldHalf">
                   <label>Fiscal Period<span className='requiredTags'> *</span></label>
@@ -277,7 +290,7 @@ const EditBudgetRequest: React.FC<EditBudgetRequestProps> = ({
                   </select>
                   {validationErrors.fiscalPeriod && <div className="error-message">{validationErrors.fiscalPeriod}</div>}
                 </div>
-                
+
                 <div className="formField formFieldHalf">
                   <label>Category<span className='requiredTags'> *</span></label>
                   <select name="category" value={formData.category} onChange={handleInputChange} required className="formSelect">
@@ -381,7 +394,7 @@ const EditBudgetRequest: React.FC<EditBudgetRequestProps> = ({
                     className="formInput"
                   />
                 </div>
-                
+
                 <div className="formField formFieldHalf">
                   <label>End Date</label>
                   <input
@@ -408,11 +421,11 @@ const EditBudgetRequest: React.FC<EditBudgetRequestProps> = ({
                       <i className="ri-information-line" /> This request is linked to Purchase Request: <strong>{request.pr_reference_code}</strong>
                       <br />Items from this PR are read-only and cannot be modified.
                     </p>
-                    
+
                     {/* Embedded ItemTableModal for PR-linked items */}
                     <ItemTableModal
                       isOpen={true}
-                      onClose={() => {}}
+                      onClose={() => { }}
                       mode="view"
                       title={`Items from PR: ${request.pr_reference_code}`}
                       items={mapItemsToTableFormat()}
@@ -421,14 +434,14 @@ const EditBudgetRequest: React.FC<EditBudgetRequestProps> = ({
                       isLinkedToPurchaseRequest={true}
                       embedded={true}
                     />
-                    
+
                     {items.length > 0 && (
                       <div className="totalAmountDisplay" style={{ marginTop: '15px' }}>
                         <h3>Total from PR Items</h3>
                         <div className="totalAmountValue">
-                          ₱{items.reduce((sum, item) => sum + item.requested_amount, 0).toLocaleString(undefined, { 
-                            minimumFractionDigits: 2, 
-                            maximumFractionDigits: 2 
+                          ₱{items.reduce((sum, item) => sum + item.requested_amount, 0).toLocaleString(undefined, {
+                            minimumFractionDigits: 2,
+                            maximumFractionDigits: 2
                           })}
                         </div>
                       </div>
@@ -540,9 +553,9 @@ const EditBudgetRequest: React.FC<EditBudgetRequestProps> = ({
                         <div className="totalAmountDisplay">
                           <h3>Total Amount from Items</h3>
                           <div className="totalAmountValue">
-                            ₱{items.reduce((sum, item) => sum + item.requested_amount, 0).toLocaleString(undefined, { 
-                              minimumFractionDigits: 2, 
-                              maximumFractionDigits: 2 
+                            ₱{items.reduce((sum, item) => sum + item.requested_amount, 0).toLocaleString(undefined, {
+                              minimumFractionDigits: 2,
+                              maximumFractionDigits: 2
                             })}
                           </div>
                         </div>

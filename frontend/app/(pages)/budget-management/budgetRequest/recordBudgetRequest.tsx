@@ -43,7 +43,7 @@ interface NewBudgetRequest {
   end_date?: string;
   items?: BudgetItem[];
   supporting_documents?: File[];
-  status: 'DRAFT' | 'SUBMITTED'; // Legacy - parent maps to PENDING
+  status: 'DRAFT' | 'SUBMITTED' | 'PENDING'; // Legacy - parent maps to PENDING
   createdBy: number;
   requested_for?: string;
 }
@@ -106,14 +106,14 @@ const AddBudgetRequest: React.FC<AddBudgetRequestProps> = ({
   const [requestDate] = useState(new Date().toISOString().split('T')[0]);
 
   const validationRules: Record<FieldName, ValidationRule> = {
-    purpose: { 
-      required: true, 
+    purpose: {
+      required: true,
       label: "Budget Purpose",
       min: 10,
       max: 500
     },
-    justification: { 
-      required: true, 
+    justification: {
+      required: true,
       label: "Justification",
       max: 5000
     },
@@ -134,8 +134,8 @@ const AddBudgetRequest: React.FC<AddBudgetRequestProps> = ({
     fiscalPeriod: { required: true, label: "Fiscal Period" },
     category: { required: true, label: "Category" },
     priority: { required: false, label: "Priority" },
-    urgencyReason: { 
-      required: false, 
+    urgencyReason: {
+      required: false,
       label: "Urgency Reason",
       max: 1000
     }
@@ -209,7 +209,7 @@ const AddBudgetRequest: React.FC<AddBudgetRequestProps> = ({
   useEffect(() => {
     const errors = validateForm(formData, false);
     setValidationErrors(errors);
-    
+
     // Form is valid if there are no errors
     setIsFormValid(Object.keys(errors).length === 0);
   }, [formData, items, showItems]);
@@ -223,7 +223,7 @@ const AddBudgetRequest: React.FC<AddBudgetRequestProps> = ({
   useEffect(() => {
     if (showItems && items.length > 0) {
       const itemsTotal = calculateTotalFromItems();
-      
+
       // Auto-fill if amountRequested is 0 or less than items total
       if (formData.amountRequested === 0 || formData.amountRequested < itemsTotal) {
         setFormData(prev => ({ ...prev, amountRequested: itemsTotal }));
@@ -273,7 +273,7 @@ const AddBudgetRequest: React.FC<AddBudgetRequestProps> = ({
     setItems(prev => {
       const updated = [...prev];
       updated[index] = { ...updated[index], [field]: value };
-      
+
       // Auto-calculate requested_amount (subtotal) when quantity or unit_cost changes
       if (field === 'quantity' || field === 'unit_cost') {
         const item = updated[index];
@@ -281,7 +281,7 @@ const AddBudgetRequest: React.FC<AddBudgetRequestProps> = ({
         const price = field === 'unit_cost' ? Number(value) : (item.unit_cost || 0);
         updated[index].requested_amount = qty * price;
       }
-      
+
       return updated;
     });
   };
@@ -385,7 +385,7 @@ const AddBudgetRequest: React.FC<AddBudgetRequestProps> = ({
     if (formData.start_date && formData.end_date) {
       const startDate = new Date(formData.start_date);
       const endDate = new Date(formData.end_date);
-      
+
       if (startDate >= endDate) {
         showError('End date must be after start date', 'Invalid Date Range');
         return;
@@ -394,8 +394,8 @@ const AddBudgetRequest: React.FC<AddBudgetRequestProps> = ({
 
     // Validate items if they exist (only when not saving as draft)
     if (showItems && items.length > 0 && !saveAsDraft) {
-      const invalidItems = items.filter(item => 
-        !item.description || 
+      const invalidItems = items.filter(item =>
+        !item.description ||
         item.requested_amount <= 0
       );
 
@@ -407,7 +407,7 @@ const AddBudgetRequest: React.FC<AddBudgetRequestProps> = ({
 
     const action = saveAsDraft ? 'save as draft' : 'submit for approval';
     console.log('Showing confirmation dialog for:', action);
-    
+
     const result = await showConfirmation(
       `Are you sure you want to ${action} this budget request?`,
       `Confirm ${saveAsDraft ? 'Draft' : 'Submit'}`
@@ -427,7 +427,7 @@ const AddBudgetRequest: React.FC<AddBudgetRequestProps> = ({
         console.log('Sending payload:', payload);
         await onAddBudgetRequest(payload);
         showSuccess(
-          `Budget request ${saveAsDraft ? 'saved as draft' : 'submitted for approval'} successfully`, 
+          `Budget request ${saveAsDraft ? 'saved as draft' : 'submitted for approval'} successfully`,
           'Success'
         );
         onClose();
@@ -475,33 +475,38 @@ const AddBudgetRequest: React.FC<AddBudgetRequestProps> = ({
   return (
     <div className="modalOverlay">
       <div className="addBudgetRequestModal">
-        <ModalHeader 
-          title="Create Budget Request" 
-          onClose={onClose} 
-          showDateTime={true} 
+        <ModalHeader
+          title="Create Budget Request"
+          onClose={onClose}
+          showDateTime={true}
         />
 
         <form onSubmit={(e) => handleSubmit(e, false)}>
           <div className="modalContent">
             <div className="formInputs">
-              
+
               {/* Basic Information Section */}
               <div className="sectionHeader">Request Information</div>
-              
+
               <div className="formRow">
                 <div className="formField formFieldHalf">
-                  <label htmlFor="department">Department</label>
-                  <input
-                    type="text"
+                  <label htmlFor="department">Department<span className='requiredTags'> *</span></label>
+                  <select
                     id="department"
                     name="department"
                     value={formData.department}
-                    readOnly
-                    className="formInput"
-                  />
-                  <span className="autofill-note">Auto-filled based on current user</span>
+                    onChange={handleInputChange}
+                    required
+                    className="formSelect"
+                    disabled ={true}
+                  >
+                    <option value="Finance">Finance</option>
+                    <option value="HR">HR</option>
+                    <option value="Operational">Operational</option>
+                    <option value="Inventory">Inventory</option>
+                  </select>
                 </div>
-                
+
                 <div className="formField formFieldHalf">
                   <label htmlFor="createdByName">Requester Name</label>
                   <input
@@ -529,7 +534,7 @@ const AddBudgetRequest: React.FC<AddBudgetRequestProps> = ({
                   />
                   <span className="autofill-note">Auto-filled based on current user</span>
                 </div>
-                
+
                 <div className="formField formFieldHalf">
                   <label htmlFor="requestDate">Date of Request</label>
                   <input
@@ -561,7 +566,7 @@ const AddBudgetRequest: React.FC<AddBudgetRequestProps> = ({
 
               {/* Budget Details Section */}
               <div className="sectionHeader">Budget Details</div>
-              
+
               <div className="formRow">
                 <div className="formField formFieldHalf">
                   <label htmlFor="fiscalPeriod">Fiscal Period<span className='requiredTags'> *</span></label>
@@ -586,7 +591,7 @@ const AddBudgetRequest: React.FC<AddBudgetRequestProps> = ({
                     <div className="error-message">{validationErrors.fiscalPeriod}</div>
                   )}
                 </div>
-                
+
                 <div className="formField formFieldHalf">
                   <label htmlFor="category">Category<span className='requiredTags'> *</span></label>
                   <select
@@ -735,7 +740,7 @@ const AddBudgetRequest: React.FC<AddBudgetRequestProps> = ({
                     <div className="error-message">{validationErrors.start_date}</div>
                   )}
                 </div>
-                
+
                 <div className="formField formFieldHalf">
                   <label htmlFor="end_date">End Date<span className='requiredTags'> *</span></label>
                   <input
@@ -754,104 +759,96 @@ const AddBudgetRequest: React.FC<AddBudgetRequestProps> = ({
                 </div>
               </div>
 
-              {/* Items Section */}
-              <div className="itemsSection">
-                <div className="itemsHeader">
-                  <h3>Budget Items</h3>
-                  <div className="itemsControls">
-                    <label className="prLinkToggle">
-                      <input
-                        type="checkbox"
-                        checked={isPRLinked}
-                        onChange={(e) => setIsPRLinked(e.target.checked)}
-                      />
-                      <span>Link to Purchase Request</span>
-                    </label>
+              {/* Items Section - Temporarily Disabled */}
+              {false && (
+                <div className="itemsSection">
+                  <div className="itemsHeader">
+                    <h3>Budget Items</h3>
                   </div>
-                </div>
 
-                {isPRLinked && (
-                  <div className="prLinkSection">
-                    <div className="formField" style={{ position: 'relative' }}>
-                      <label htmlFor="prReferenceCode">Purchase Request Code<span className='requiredTags'> *</span></label>
-                      <div className="prSearchContainer">
-                        <input
-                          type="text"
-                          id="prReferenceCode"
-                          value={prCodeSearch || prReferenceCode}
-                          onChange={e => {
-                            setPrCodeSearch(e.target.value);
-                            setShowPrDropdown(true);
-                          }}
-                          onFocus={() => setShowPrDropdown(true)}
-                          placeholder="Search or select PR code"
-                          className="formInput"
-                          autoComplete="off"
-                        />
-                        <button type="button" className="prSearchBtn" title="Search PR" tabIndex={-1}>
-                          <i className="ri-search-line" />
-                        </button>
-                        {showPrDropdown && (
-                          <div className="dropdown pr-dropdown" style={{ position: 'absolute', top: '100%', left: 0, right: 0, zIndex: 10, background: '#fff', border: '1px solid #ccc', maxHeight: 180, overflowY: 'auto' }}>
-                            {mockPrCodes.filter(code => (prCodeSearch ? code.toLowerCase().includes(prCodeSearch.toLowerCase()) : true)).length === 0 ? (
-                              <div className="dropdown-item" style={{ padding: 8, color: '#888' }}>No results</div>
-                            ) : (
-                              mockPrCodes
-                                .filter(code => (prCodeSearch ? code.toLowerCase().includes(prCodeSearch.toLowerCase()) : true))
-                                .map(code => (
-                                  <div
-                                    key={code}
-                                    className="dropdown-item"
-                                    style={{ padding: 8, cursor: 'pointer' }}
-                                    onMouseDown={() => {
-                                      setPrReferenceCode(code);
-                                      setPrCodeSearch(code);
-                                      setShowPrDropdown(false);
-                                    }}
-                                  >
-                                    {code}
-                                  </div>
-                                ))
-                            )}
-                          </div>
-                        )}
+                  {isPRLinked && (
+                    <div className="prLinkSection">
+                      <div className="formField" style={{ position: 'relative' }}>
+                        <label htmlFor="prReferenceCode">Purchase Request Code<span className='requiredTags'> *</span></label>
+                        <div className="prSearchContainer">
+                          <input
+                            type="text"
+                            id="prReferenceCode"
+                            value={prCodeSearch || prReferenceCode}
+                            onChange={e => {
+                              setPrCodeSearch(e.target.value);
+                              setShowPrDropdown(true);
+                            }}
+                            onFocus={() => setShowPrDropdown(true)}
+                            placeholder="Search or select PR code"
+                            className="formInput"
+                            autoComplete="off"
+                          />
+                          <button type="button" className="prSearchBtn" title="Search PR" tabIndex={-1}>
+                            <i className="ri-search-line" />
+                          </button>
+                          {showPrDropdown && (
+                            <div className="dropdown pr-dropdown" style={{ position: 'absolute', top: '100%', left: 0, right: 0, zIndex: 10, background: '#fff', border: '1px solid #ccc', maxHeight: 180, overflowY: 'auto' }}>
+                              {mockPrCodes.filter(code => (prCodeSearch ? code.toLowerCase().includes(prCodeSearch.toLowerCase()) : true)).length === 0 ? (
+                                <div className="dropdown-item" style={{ padding: 8, color: '#888' }}>No results</div>
+                              ) : (
+                                mockPrCodes
+                                  .filter(code => (prCodeSearch ? code.toLowerCase().includes(prCodeSearch.toLowerCase()) : true))
+                                  .map(code => (
+                                    <div
+                                      key={code}
+                                      className="dropdown-item"
+                                      style={{ padding: 8, cursor: 'pointer' }}
+                                      onMouseDown={() => {
+                                        setPrReferenceCode(code);
+                                        setPrCodeSearch(code);
+                                        setShowPrDropdown(false);
+                                      }}
+                                    >
+                                      {code}
+                                    </div>
+                                  ))
+                              )}
+                            </div>
+                          )}
+                        </div>
+                        <span className="field-note">Select the Purchase Request code to link items</span>
                       </div>
-                      <span className="field-note">Select the Purchase Request code to link items</span>
                     </div>
-                  </div>
-                )}
+                  )}
 
-                {/* Embedded ItemTableModal - shows different fields based on PR link status */}
-                <ItemTableModal
-                  isOpen={true}
-                  onClose={() => {}}
-                  mode={isPRLinked ? "view" : "add"}
-                  title={isPRLinked ? "PR Items (View Only)" : "Manage Budget Items"}
-                  items={mapItemsToTableFormat()}
-                  onSave={handleSaveItems}
-                  readOnlyFields={isPRLinked ? ['code', 'department', 'item_code', 'supplier_code'] : []}
-                  requiredFields={['item_name', 'quantity', 'unit_measure', 'unit_cost', 'supplier_name']}
-                  isLinkedToPurchaseRequest={isPRLinked}
-                  embedded={true}
-                />
+                  {/* Embedded ItemTableModal - shows different fields based on PR link status */}
+                  <ItemTableModal
+                    isOpen={true}
+                    onClose={() => { }}
+                    mode={isPRLinked ? "view" : "add"}
+                    title={isPRLinked ? "PR Items (View Only)" : "Manage Budget Items"}
+                    items={mapItemsToTableFormat()}
+                    onSave={handleSaveItems}
+                    readOnlyFields={isPRLinked ? ['code', 'department', 'item_code', 'supplier_code'] : []}
+                    requiredFields={['item_name', 'quantity', 'unit_measure', 'unit_cost', 'supplier_name']}
+                    isLinkedToPurchaseRequest={isPRLinked}
+                    embedded={true}
+                  />
 
-                {items.length > 0 && (
-                  <div className="totalAmountDisplay">
-                    <h3>Total from {items.length} item(s)</h3>
-                    <div className="totalAmountValue">
-                      ₱{calculateTotalFromItems().toLocaleString(undefined, { 
-                        minimumFractionDigits: 2, 
-                        maximumFractionDigits: 2 
-                      })}
+                  {items.length > 0 && (
+                    <div className="totalAmountDisplay">
+                      <h3>Total from {items.length} item(s)</h3>
+                      <div className="totalAmountValue">
+                        ₱{calculateTotalFromItems().toLocaleString(undefined, {
+                          minimumFractionDigits: 2,
+                          maximumFractionDigits: 2
+                        })}
+                      </div>
                     </div>
-                  </div>
-                )}
-              </div>
+                  )}
+                </div>
+              )}
 
               {/* Supporting Documents Section */}
               <div className="sectionHeader">Supporting Documents (Optional)</div>
-              
-              <div 
+
+              <div
                 className={`fileUploadSection ${dragOver ? 'dragOver' : ''}`}
                 onDragOver={(e) => { e.preventDefault(); setDragOver(true); }}
                 onDragLeave={() => setDragOver(false)}
@@ -911,37 +908,37 @@ const AddBudgetRequest: React.FC<AddBudgetRequestProps> = ({
                 console.log('Save as Draft button clicked - START');
                 e.preventDefault();
                 e.stopPropagation();
-                
+
                 if (!isFormValid) {
-                  alert('Please fix all validation errors before saving');
+                  showError('Please fix all validation errors before saving', 'Error');
                   return;
                 }
-                
+
                 try {
                   console.log('Creating draft payload...', formData);
                   const payload: NewBudgetRequest = {
                     ...formData,
-                    status: 'DRAFT',
+                    status: 'PENDING', // Mapped to PENDING as DRAFT is not in schema
                     items: showItems && items.length > 0 ? items : undefined,
                     supporting_documents: supportingDocuments.length > 0 ? supportingDocuments : undefined
                   };
-                  
+
                   console.log('Calling onAddBudgetRequest with payload:', payload);
                   await onAddBudgetRequest(payload);
                   console.log('onAddBudgetRequest completed successfully');
-                  
-                  alert('Draft saved successfully!');
+
+                  showSuccess('Draft saved successfully!', 'Success');
                   onClose();
                 } catch (error) {
                   console.error('Error saving draft:', error);
-                  alert('Error saving draft: ' + (error instanceof Error ? error.message : String(error)));
+                  showError('Error saving draft: ' + (error instanceof Error ? error.message : String(error)), 'Error');
                 }
               }}
             >
               <i className="ri-draft-line" /> Save as Draft
             </button>
-            <button 
-              type="button" 
+            <button
+              type="button"
               className="submitButton"
               disabled={!isFormValid}
               title={!isFormValid ? "Please fix all validation errors before submitting" : "Submit for approval"}
@@ -949,15 +946,15 @@ const AddBudgetRequest: React.FC<AddBudgetRequestProps> = ({
                 console.log('Submit for Approval button clicked - START');
                 e.preventDefault();
                 e.stopPropagation();
-                
+
                 if (!isFormValid) {
-                  alert('Please fix all validation errors before submitting');
+                  showError('Please fix all validation errors before submitting', 'Error');
                   return;
                 }
-                
+
                 // Quick validation
                 if (!formData.purpose || !formData.justification || !formData.amountRequested || formData.amountRequested <= 0) {
-                  alert('Please fill in required fields: Purpose, Justification, and Amount');
+                  showError('Please fill in required fields: Purpose, Justification, and Amount', 'Error');
                   return;
                 }
 
@@ -965,29 +962,29 @@ const AddBudgetRequest: React.FC<AddBudgetRequestProps> = ({
                 if (showItems && items.length > 0) {
                   const itemsTotal = calculateTotalFromItems();
                   if (formData.amountRequested < itemsTotal) {
-                    alert(`Amount requested (₱${formData.amountRequested.toLocaleString()}) must be greater than or equal to items total (₱${itemsTotal.toLocaleString()})`);
+                    showError(`Amount requested (₱${formData.amountRequested.toLocaleString()}) must be greater than or equal to items total (₱${itemsTotal.toLocaleString()})`, 'Error');
                     return;
                   }
                 }
-                
+
                 try {
                   console.log('Creating submission payload...', formData);
                   const payload: NewBudgetRequest = {
                     ...formData,
-                    status: 'SUBMITTED',
+                    status: 'PENDING',
                     items: showItems && items.length > 0 ? items : undefined,
                     supporting_documents: supportingDocuments.length > 0 ? supportingDocuments : undefined
                   };
-                  
+
                   console.log('Calling onAddBudgetRequest with payload:', payload);
                   await onAddBudgetRequest(payload);
                   console.log('onAddBudgetRequest completed successfully');
-                  
-                  alert('Request submitted successfully!');
+
+                  showSuccess('Request submitted successfully!', 'Success');
                   onClose();
                 } catch (error) {
                   console.error('Error submitting request:', error);
-                  alert('Error submitting request: ' + (error instanceof Error ? error.message : String(error)));
+                  showError('Error submitting request: ' + (error instanceof Error ? error.message : String(error)), 'Error');
                 }
               }}
             >

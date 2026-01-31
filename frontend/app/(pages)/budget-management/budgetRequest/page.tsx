@@ -15,12 +15,13 @@ import AddBudgetRequest from './recordBudgetRequest';
 import EditBudgetRequest from './editBudgetRequest';
 import ViewBudgetRequest from './viewBudgetRequest';
 import AuditTrailBudgetRequest from './auditTrailBudgetRequest';
-import budgetRequestService, { 
-  CreateBudgetRequestDto, 
-  ApprovalDto, 
-  RejectionDto 
+import budgetRequestService, {
+  CreateBudgetRequestDto,
+  ApprovalDto,
+  RejectionDto
 } from '../../../services/budgetRequest.service';
 import { useAuth } from '../../../contexts/AuthContext';
+import { BackButton } from '../../../Components/backButton';
 
 
 
@@ -121,14 +122,14 @@ const BudgetRequestPage = () => {
   ];
 
   // Handle filter application
-  const handleFilterApply = (filterValues: Record<string, string | string[] | {from: string; to: string}>) => {
+  const handleFilterApply = (filterValues: Record<string, string | string[] | { from: string; to: string }>) => {
     // Date range filter
     if (filterValues.dateRange && typeof filterValues.dateRange === 'object') {
-      const dateRange = filterValues.dateRange as { from: string; to: string};
+      const dateRange = filterValues.dateRange as { from: string; to: string };
       setDateFrom(dateRange.from);
       setDateTo(dateRange.to);
     }
-    
+
     // Status filter
     if (filterValues.status && Array.isArray(filterValues.status)) {
       setStatusFilter(filterValues.status.join(','));
@@ -159,13 +160,13 @@ const BudgetRequestPage = () => {
           sortBy: sortField,
           sortOrder: sortOrder
         };
-        
+
         // Only add optional params if they have values
         if (search) params.search = search;
         if (statusFilter) params.status = statusFilter;
-        
+
         const response = await budgetRequestService.list(params);
-        
+
         if (response.success && response.data) {
           setData(response.data);
         } else {
@@ -185,23 +186,23 @@ const BudgetRequestPage = () => {
   // Helper function to get primary category from items
   const getBudgetCategory = (items?: BudgetRequestItem[]) => {
     if (!items || items.length === 0) return 'Uncategorized';
-    
+
     // Get unique categories from items
     const categories = items
       .map(item => item.category_id)
       .filter(cat => cat !== null && cat !== undefined);
-    
+
     if (categories.length === 0) return 'Uncategorized';
-    
+
     // Map category IDs to names (you may need to adjust based on your category mapping)
     const categoryNames = availableCategories;
     const firstCategoryId = categories[0];
-    
+
     // If all items have the same category, return that category
     if (categories.every(cat => cat === firstCategoryId)) {
       return categoryNames[firstCategoryId - 1] || 'Other';
     }
-    
+
     // If items have different categories, return "Multiple"
     return 'Multiple Categories';
   };
@@ -211,7 +212,7 @@ const BudgetRequestPage = () => {
     const searchLower = search.toLowerCase();
     const categoryName = getBudgetCategory(item.items);
 
-    const matchesSearch = search === '' || 
+    const matchesSearch = search === '' ||
       (item.purpose && item.purpose.toLowerCase().includes(searchLower)) ||
       (item.remarks && item.remarks.toLowerCase().includes(searchLower)) ||
       item.status.toLowerCase().includes(searchLower) ||
@@ -221,26 +222,26 @@ const BudgetRequestPage = () => {
       item.total_amount.toString().includes(searchLower) ||
       item.request_code.toLowerCase().includes(searchLower);
 
-    const matchesStatus = statusFilter ? 
+    const matchesStatus = statusFilter ?
       statusFilter.split(',').some(status => item.status === status.trim()) : true;
 
     const itemDate = new Date(item.created_at).toISOString().split('T')[0];
-    const matchesDate = (!dateFrom || itemDate >= dateFrom) && 
+    const matchesDate = (!dateFrom || itemDate >= dateFrom) &&
       (!dateTo || itemDate <= dateTo);
 
     return matchesSearch && matchesStatus && matchesDate;
   }).sort((a, b) => {
     const aValue = a[sortField];
     const bValue = b[sortField];
-    
+
     if (typeof aValue === 'string' && typeof bValue === 'string') {
       return sortOrder === 'asc' ? aValue.localeCompare(bValue) : bValue.localeCompare(aValue);
     }
-    
+
     if (typeof aValue === 'number' && typeof bValue === 'number') {
       return sortOrder === 'asc' ? aValue - bValue : bValue - aValue;
     }
-    
+
     return 0;
   });
 
@@ -280,15 +281,37 @@ const BudgetRequestPage = () => {
     );
   };
 
+  const RequestTypeBadge = ({ type }: { type: string }) => {
+    const getTypeClass = (type: string) => {
+      switch (type) {
+        case 'REGULAR': return 'normal';
+        case 'PROJECT_BASED': return 'single';
+        case 'URGENT': return 'urgent';
+        case 'EMERGENCY': return 'rejected'; // Red for emergency
+        default: return 'normal';
+      }
+    };
+
+    const formatType = (type: string) => {
+      return type.replace('_', ' ').toLowerCase().replace(/\b\w/g, l => l.toUpperCase());
+    };
+
+    return (
+      <span className={`chip ${getTypeClass(type)}`}>
+        {formatType(type)}
+      </span>
+    );
+  };
+
   // Action buttons based on status (Admin View)
   const getActionButtons = (item: BudgetRequest) => {
     const buttons = [];
 
     // View button (always available)
     buttons.push(
-      <button 
+      <button
         key="view"
-        className="viewBtn" 
+        className="viewBtn"
         onClick={() => handleView(item)}
         title="View Request"
       >
@@ -300,19 +323,42 @@ const BudgetRequestPage = () => {
       case 'PENDING':
         // Pending requests can be edited or deleted before approval
         buttons.push(
-          <button 
+          <button
             key="edit"
-            className="editBtn" 
+            className="editBtn"
             onClick={() => handleEdit(item)}
             title="Edit Request"
           >
             <i className="ri-edit-2-line" />
           </button>,
-          <button 
+          <button
             key="delete"
-            className="deleteBtn" 
+            className="deleteBtn"
             onClick={() => handleDelete(item.id)}
             title="Delete Request"
+          >
+            <i className="ri-delete-bin-line" />
+          </button>
+        );
+        break;
+      default:
+        // Pending requests can be edited or deleted before approval
+        buttons.push(
+          <button
+            key="edit"
+            className="editBtn"
+            onClick={() => handleEdit(item)}
+            title="Edit Request"
+            disabled={true}
+          >
+            <i className="ri-edit-2-line" />
+          </button>,
+          <button
+            key="delete"
+            className="deleteBtn"
+            onClick={() => handleDelete(item.id)}
+            title="Delete Request"
+            disabled={true}
           >
             <i className="ri-delete-bin-line" />
           </button>
@@ -330,7 +376,7 @@ const BudgetRequestPage = () => {
     try {
       console.log('Original newRequest received:', newRequest);
       console.log('Items from newRequest:', newRequest.items);
-      
+
       const createDto: CreateBudgetRequestDto = {
         department_id: user?.department || 'operations',
         department_name: user?.department || 'Operations',
@@ -339,33 +385,43 @@ const BudgetRequestPage = () => {
         total_amount: newRequest.amountRequested || newRequest.total_amount || 0,
         purpose: newRequest.purpose,
         remarks: newRequest.justification || newRequest.remarks,
-        request_type: (newRequest.priority === 'urgent' ? 'URGENT' : 
-                      newRequest.priority === 'high' ? 'PROJECT_BASED' : 
-                      'REGULAR') as 'REGULAR' | 'PROJECT_BASED' | 'URGENT' | 'EMERGENCY',
+        request_type: (newRequest.priority === 'urgent' ? 'URGENT' :
+          newRequest.priority === 'high' ? 'PROJECT_BASED' :
+            'REGULAR') as 'REGULAR' | 'PROJECT_BASED' | 'URGENT' | 'EMERGENCY',
         pr_reference_code: newRequest.pr_reference_code,
-        items: newRequest.items
+        items: newRequest.items,
+        status: newRequest.status
       };
-      
+
       console.log('CreateDTO being sent:', createDto);
       console.log('Items in DTO:', createDto.items);
-      
+
       const response = await budgetRequestService.create(createDto);
-      
+      console.log('Create response:', response);
+
       if (response.success && response.data) {
+        console.log('Creation successful, refreshing list...');
         // Refresh the list by re-fetching
         const listResponse = await budgetRequestService.list({
           page: currentPage,
           limit: pageSize
         });
-        
+        console.log('List refresh response:', listResponse);
+
         if (listResponse.success && listResponse.data) {
+          console.log('Setting new data:', listResponse.data);
           setData(listResponse.data);
         }
-        
+
         showSuccess('Budget request created successfully', 'Success');
         closeModal();
       } else {
-        showError(response.error || 'Failed to create budget request', 'Error');
+        console.error('Creation failed:', response.error);
+        // Clean up error message
+        const errorMessage = response.error?.includes('requester_position')
+          ? 'Missing required field: Position'
+          : (response.error || 'Failed to create budget request');
+        showError(errorMessage, 'Creation Failed');
       }
     } catch (error: any) {
       console.error('Error creating budget request:', error);
@@ -377,23 +433,23 @@ const BudgetRequestPage = () => {
 
   const handleUpdate = async (id: number, formData: any) => {
     console.log('handleUpdate called with:', id, formData);
-    
+
     try {
       setLoading(true);
-      
+
       const response = await budgetRequestService.update(id, formData);
-      
+
       if (response.success) {
         // Refresh the list
         const listResponse = await budgetRequestService.list({
           page: currentPage,
           limit: pageSize
         });
-        
+
         if (listResponse.success && listResponse.data) {
           setData(listResponse.data);
         }
-        
+
         showSuccess('Budget request updated successfully', 'Success');
         closeModal();
       } else {
@@ -479,7 +535,7 @@ const BudgetRequestPage = () => {
       // Fetch full details including itemAllocations
       console.log('Fetching full budget request details for ID:', item.id);
       const response = await budgetRequestService.getById(item.id);
-      
+
       if (response.success && response.data) {
         openModal('view', response.data);
       } else {
@@ -513,7 +569,7 @@ const BudgetRequestPage = () => {
       setLoading(true);
       try {
         const response = await budgetRequestService.delete(requestId);
-        
+
         if (response.success) {
           setData(prev => prev.filter(item => item.id !== requestId));
           showSuccess('Request deleted successfully', 'Deleted');
@@ -545,9 +601,9 @@ const BudgetRequestPage = () => {
       setLoading(true);
       try {
         const response = await budgetRequestService.submit(requestId);
-        
+
         if (response.success && response.data) {
-          setData(prev => prev.map(item => 
+          setData(prev => prev.map(item =>
             item.id === requestId ? response.data! : item
           ));
           showSuccess('Request submitted for approval', 'Success');
@@ -582,11 +638,11 @@ const BudgetRequestPage = () => {
         const approvalData: ApprovalDto = {
           rejection_reason: 'Approved by Finance Admin'
         };
-        
+
         const response = await budgetRequestService.approve(requestId, approvalData);
-        
+
         if (response.success && response.data) {
-          setData(prev => prev.map(item => 
+          setData(prev => prev.map(item =>
             item.id === requestId ? response.data! : item
           ));
           showSuccess('Request approved successfully', 'Approved');
@@ -628,11 +684,11 @@ const BudgetRequestPage = () => {
         const rejectionData: RejectionDto = {
           rejection_reason: reason
         };
-        
+
         const response = await budgetRequestService.reject(requestId, rejectionData);
-        
+
         if (response.success && response.data) {
-          setData(prev => prev.map(item => 
+          setData(prev => prev.map(item =>
             item.id === requestId ? response.data! : item
           ));
           showSuccess('Request rejected successfully', 'Rejected');
@@ -654,12 +710,12 @@ const BudgetRequestPage = () => {
     // Implement single request export
   };
 
-    const handleAuditTrail = (requestId: number) => {
-        const request = data.find(item => item.id === requestId);
-        if (request) {
-            openModal('audit', request);
-        }
-    };
+  const handleAuditTrail = (requestId: number) => {
+    const request = data.find(item => item.id === requestId);
+    if (request) {
+      openModal('audit', request);
+    }
+  };
 
   // Export functions
   const handleExport = (format: 'csv' | 'excel' | 'pdf') => {
@@ -683,37 +739,12 @@ const BudgetRequestPage = () => {
     return (
       <>
         {/* Back Button */}
-      <div style={{
-          display: 'flex',
-          flexDirection: 'row',
-          width: '100%',
-          justifyContent: 'flex-start',
-          alignItems: 'flex-start',
-          margin: 10,
-          background: 'none',
-          border: 'none',
-          cursor: 'pointer',
-          fontSize: 28,
-          zIndex: 10,
-          paddingLeft: 30
-        }}>
-          <button
-          onClick={() => router.back()}
-          style={{
-            display: 'flex',
-            justifyContent: 'flex-start',
-            alignItems: 'center',
-            background: 'none',
-            border: 'none',
-            cursor: 'pointer',
-            fontSize: 28,
-            zIndex: 10
-          }}
-          aria-label="Go back"
-        >
-          <i className="ri-arrow-left-long-line"></i>
-        </button>
-      </div>
+        {/* Back Button */}
+        <div style={{ display: 'flex', flex: 1, width: '100%', paddingLeft: 30, paddingTop: 10, paddingBottom: 10 }}>
+          <div style={{ display: 'flex', top: '1rem', left: '1rem', zIndex: 10 }}>
+            <BackButton variant="default" size="default" href={process.env.NEXT_PUBLIC_MAIN_FRONTEND_URL} aria-label="Go back" />
+          </div>
+        </div>
         <div className="card">
           <h1 className="title">Budget Request</h1>
           <Loading />
@@ -725,189 +756,162 @@ const BudgetRequestPage = () => {
   return (
     <>
       {/* Back Button */}
-      <div style={{
-          display: 'flex',
-          flexDirection: 'row',
-          width: '100%',
-          justifyContent: 'flex-start',
-          alignItems: 'flex-start',
-          margin: 10,
-          background: 'none',
-          border: 'none',
-          cursor: 'pointer',
-          fontSize: 28,
-          zIndex: 10,
-          paddingLeft: 30
-        }}>
-        <button
-        onClick={() => router.back()}
-        style={{
-          display: 'flex',
-          justifyContent: 'flex-start',
-          alignItems: 'center',
-          background: 'none',
-          border: 'none',
-          cursor: 'pointer',
-          fontSize: 28,
-          zIndex: 10
-        }}
-        aria-label="Go back"
-      >
-        <i className="ri-arrow-left-long-line"></i>
-      </button>
-      </div>
-      
-      <div className="card">
-      <div className="elements">
-        <div className="title">
-          <h1>Budget Requests</h1>
+      <div style={{ display: 'flex', flex: 1, width: '100%', paddingLeft: 30, paddingTop: 10, paddingBottom: 10 }}>
+        <div style={{ display: 'flex', top: '1rem', left: '1rem', zIndex: 10 }}>
+          <BackButton variant="default" size="default" href={process.env.NEXT_PUBLIC_MAIN_FRONTEND_URL} aria-label="Go back" />
         </div>
-        
-        <div className="settings">
-          <div className="search-filter-container">
-            {/* Search bar */}
-            <div className="searchBar">
-              <i className="ri-search-line" />
-              <input
-                className="searchInput"
-                type="text"
-                placeholder="Search requests..."
-                value={search}
-                onChange={(e) => setSearch(e.target.value)}
+      </div>
+
+
+      <div className="card">
+        <div className="elements">
+          <div className="title">
+            <h1>Budget Requests</h1>
+          </div>
+
+          <div className="settings">
+            <div className="search-filter-container">
+              {/* Search bar */}
+              <div className="searchBar">
+                <i className="ri-search-line" />
+                <input
+                  className="searchInput"
+                  type="text"
+                  placeholder="Search requests..."
+                  value={search}
+                  onChange={(e) => setSearch(e.target.value)}
+                />
+              </div>
+
+              <FilterDropdown
+                sections={filterSections}
+                onApply={handleFilterApply}
+                initialValues={{
+                  dateRange: { from: dateFrom, to: dateTo },
+                  status: statusFilter ? statusFilter.split(',') : [],
+                  category: categoryFilter ? categoryFilter.split(',') : []
+                }}
               />
             </div>
 
-            <FilterDropdown
-              sections={filterSections}
-              onApply={handleFilterApply}
-              initialValues={{
-                dateRange: { from: dateFrom, to: dateTo },
-                status: statusFilter ? statusFilter.split(',') : [],
-                category: categoryFilter ? categoryFilter.split(',') : []
-              }}
-            />
-          </div>
-
-          <div className="filters">
-            {/* Add New Request */}
-            <button onClick={() => openModal('add')} id="addButton" className="addButton">
+            <div className="filters">
+              {/* Add New Request */}
+              <button onClick={() => openModal('add')} id="addButton" className="addButton">
                 <i className="ri-add-line" />New Request
-            </button>
+              </button>
+            </div>
           </div>
-        </div>
 
-        <div className="table-wrapper">
-          <div className="tableContainer">
-            <table className="data-table">
-              <thead>
-                <tr>
-                  <th>No.</th>
-                  <th onClick={() => handleSort('department_name')} className="sortable">
-                    Department
-                    {sortField === 'department_name' && (
-                      <i className={`ri-arrow-${sortOrder === 'asc' ? 'up' : 'down'}-line`} />
-                    )}
-                  </th>
-                  <th onClick={() => handleSort('created_at')} className="sortable">
-                    Request Date
-                    {sortField === 'created_at' && (
-                      <i className={`ri-arrow-${sortOrder === 'asc' ? 'up' : 'down'}-line`} />
-                    )}
-                  </th>
-                  <th onClick={() => handleSort('request_type')} className="sortable">
-                    Request Type
-                    {sortField === 'request_type' && (
-                      <i className={`ri-arrow-${sortOrder === 'asc' ? 'up' : 'down'}-line`} />
-                    )}
-                  </th>
-                  <th onClick={() => handleSort('aggregated_requested_amount')} className="sortable">
-                    Requested Amount
-                    {sortField === 'aggregated_requested_amount' && (
-                      <i className={`ri-arrow-${sortOrder === 'asc' ? 'up' : 'down'}-line`} />
-                    )}
-                  </th>
-                  <th onClick={() => handleSort('aggregated_approved_amount')} className="sortable">
-                    Approved Amount
-                    {sortField === 'aggregated_approved_amount' && (
-                      <i className={`ri-arrow-${sortOrder === 'asc' ? 'up' : 'down'}-line`} />
-                    )}
-                  </th>
-                  <th onClick={() => handleSort('status')} className="sortable sticky-status">
-                    Status
-                    {sortField === 'status' && (
-                      <i className={`ri-arrow-${sortOrder === 'asc' ? 'up' : 'down'}-line`} />
-                    )}
-                  </th>
-                  <th className="sticky-actions">Actions</th>
-                </tr>
-              </thead>
-              <tbody>
-                {currentRecords.map((item, index) => (
-                  <tr 
-                    key={item.id}
-                    onClick={(e) => {
+          <div className="table-wrapper">
+            <div className="tableContainer">
+              <table className="data-table">
+                <thead>
+                  <tr>
+                    <th className="No">No.</th>
+                    <th onClick={() => handleSort('department_name')} className="sortable">
+                      Department
+                      {sortField === 'department_name' && (
+                        <i className={`ri-arrow-${sortOrder === 'asc' ? 'up' : 'down'}-line`} />
+                      )}
+                    </th>
+                    <th onClick={() => handleSort('created_at')} className="sortable">
+                      Request Date
+                      {sortField === 'created_at' && (
+                        <i className={`ri-arrow-${sortOrder === 'asc' ? 'up' : 'down'}-line`} />
+                      )}
+                    </th>
+                    <th onClick={() => handleSort('request_type')} className="sortable">
+                      Request Type
+                      {sortField === 'request_type' && (
+                        <i className={`ri-arrow-${sortOrder === 'asc' ? 'up' : 'down'}-line`} />
+                      )}
+                    </th>
+                    <th onClick={() => handleSort('aggregated_requested_amount')} className="sortable">
+                      Requested Amount
+                      {sortField === 'aggregated_requested_amount' && (
+                        <i className={`ri-arrow-${sortOrder === 'asc' ? 'up' : 'down'}-line`} />
+                      )}
+                    </th>
+                    <th onClick={() => handleSort('aggregated_approved_amount')} className="sortable">
+                      Approved Amount
+                      {sortField === 'aggregated_approved_amount' && (
+                        <i className={`ri-arrow-${sortOrder === 'asc' ? 'up' : 'down'}-line`} />
+                      )}
+                    </th>
+                    <th onClick={() => handleSort('status')} className="sortable sticky-status">
+                      Status
+                      {sortField === 'status' && (
+                        <i className={`ri-arrow-${sortOrder === 'asc' ? 'up' : 'down'}-line`} />
+                      )}
+                    </th>
+                    <th className="sticky-actions">Actions</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {currentRecords.map((item, index) => (
+                    <tr
+                      key={item.id}
+                      onClick={(e) => {
                         // Prevent row click when clicking on action buttons
                         if (!(e.target as HTMLElement).closest('.actionButtonsContainer')) {
-                        handleView(item);
+                          handleView(item);
                         }
-                    }}
-                    style={{ cursor: 'pointer' }}
-                  >
-                    <td>{(currentPage - 1) * pageSize + index + 1}</td>
-                    <td>{item.department_name || 'N/A'}</td>
-                    <td>{formatDate(item.created_at)}</td>
-                    <td>
-                      <span className={`priority-badge priority-${item.request_type?.toLowerCase()}`}>
-                        {item.request_type}
-                      </span>
-                    </td>
-                    <td className="amount-cell">
-                      ₱{Number(item.aggregated_requested_amount || item.total_amount).toLocaleString(undefined, { 
-                        minimumFractionDigits: 2, 
-                        maximumFractionDigits: 2 
-                      })}
-                    </td>
-                    <td className="amount-cell">
-                      {item.aggregated_approved_amount !== null && item.aggregated_approved_amount !== undefined && item.aggregated_approved_amount > 0 ? (
-                        <span className="approved-amount">
-                          ₱{Number(item.aggregated_approved_amount).toLocaleString(undefined, { 
-                            minimumFractionDigits: 2, 
-                            maximumFractionDigits: 2 
-                          })}
-                        </span>
-                      ) : (
-                        <span className="not-approved">-</span>
-                      )}
-                    </td>
-                    <td><StatusBadge status={item.status} /></td>
-                    <td className="actionButtons">
-                      <div className="actionButtonsContainer">
-                        {getActionButtons(item)}
-                      </div>
-                    </td>
-                    
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-            {currentRecords.length === 0 && !loading && (
-              <p className="noRecords">No budget requests found.</p>
-            )}
+                      }}
+                      style={{ cursor: 'pointer' }}
+                    >
+                      <td className="No">{(currentPage - 1) * pageSize + index + 1}</td>
+                      <td>{item.department_name || 'N/A'}</td>
+                      <td>{formatDate(item.created_at)}</td>
+                      <td>
+                        <RequestTypeBadge type={item.request_type} />
+                      </td>
+                      <td className="amount-cell">
+                        ₱{Number(item.aggregated_requested_amount || item.total_amount).toLocaleString(undefined, {
+                          minimumFractionDigits: 2,
+                          maximumFractionDigits: 2
+                        })}
+                      </td>
+                      <td className="amount-cell">
+                        {item.aggregated_approved_amount !== null && item.aggregated_approved_amount !== undefined && item.aggregated_approved_amount > 0 ? (
+                          <span className="approved-amount">
+                            ₱{Number(item.aggregated_approved_amount).toLocaleString(undefined, {
+                              minimumFractionDigits: 2,
+                              maximumFractionDigits: 2
+                            })}
+                          </span>
+                        ) : (
+                          <span className="not-approved">-</span>
+                        )}
+                      </td>
+                      <td><StatusBadge status={item.status} /></td>
+                      <td className="actionButtons">
+                        <div className="actionButtonsContainer">
+                          {getActionButtons(item)}
+                        </div>
+                      </td>
+
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+              {currentRecords.length === 0 && !loading && (
+                <p className="noRecords">No budget requests found.</p>
+              )}
+            </div>
           </div>
+
+          <PaginationComponent
+            currentPage={currentPage}
+            totalPages={totalPages}
+            pageSize={pageSize}
+            onPageChange={setCurrentPage}
+            onPageSizeChange={setPageSize}
+          />
+
+          {/* Modal Manager - Render active modal */}
+          {isModalOpen && modalContent}
         </div>
-
-        <PaginationComponent
-          currentPage={currentPage}
-          totalPages={totalPages}
-          pageSize={pageSize}
-          onPageChange={setCurrentPage}
-          onPageSizeChange={setPageSize}
-        />
-
-        {/* Modal Manager - Render active modal */}
-        {isModalOpen && modalContent}
       </div>
-    </div>
     </>
   );
 };
