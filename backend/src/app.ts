@@ -10,6 +10,11 @@ import { env } from './config/env';
 
 const app: Application = express();
 
+// Trust proxy headers (required for Railway, Heroku, AWS ELB, etc.)
+// This allows req.protocol to correctly return 'https' when behind a reverse proxy
+// Railway sets X-Forwarded-Proto header which Express will use when this is enabled
+app.set('trust proxy', 1);
+
 // Validate Swagger specification on startup (if enabled)
 if (env.ENABLE_API_DOCS) {
   validateSwaggerSpec();
