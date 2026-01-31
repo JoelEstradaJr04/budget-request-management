@@ -5,12 +5,29 @@ import routes from './routes';
 import { errorHandler, notFoundHandler } from './middlewares/errorHandler.middleware';
 import { requestLogger } from './middlewares/requestLogger.middleware';
 import { apiLimiter } from './middlewares/rateLimit.middleware';
+import { setupSwagger, validateSwaggerSpec } from './middlewares/swagger.middleware';
+import { env } from './config/env';
 
 const app: Application = express();
 
+// Validate Swagger specification on startup (if enabled)
+if (env.ENABLE_API_DOCS) {
+  validateSwaggerSpec();
+}
+
+// CORS configuration
 // CORS configuration
 app.use(cors({
-  origin: process.env.CORS_ORIGIN || '*',
+  origin: (origin, callback) => {
+    const allowedOrigins = (env.CORS_ORIGIN || '*').split(',');
+    // Allow requests with no origin (like mobile apps or curl requests)
+    if (!origin) return callback(null, true);
+    if (allowedOrigins.indexOf(origin) !== -1 || allowedOrigins.includes('*')) {
+      callback(null, true);
+    } else {
+      callback(new Error('Not allowed by CORS'));
+    }
+  },
   credentials: true
 }));
 
@@ -23,6 +40,9 @@ app.use(requestLogger);
 
 // Rate limiting
 app.use('/api', apiLimiter);
+
+// Setup Swagger/OpenAPI documentation (if enabled)
+setupSwagger(app);
 
 // API routes
 app.use('/api', routes);

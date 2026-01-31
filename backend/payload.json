@@ -1,0 +1,7 @@
+{
+    "request_code": "AUDIT-TEST-003",
+    "purpose": "Testing Audit Integration",
+    "total_amount": 5000,
+    "department_id": "finance",
+    "items": []
+}

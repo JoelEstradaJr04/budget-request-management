@@ -5,10 +5,11 @@ import webhookDispatcher from '../webhooks/dispatcher';
 import { applyAccessFilter } from '../middlewares/permission.middleware';
 import { successResponse, successResponseWithPagination, errorResponse, notFoundResponse, forbiddenResponse } from '../utils/response.util';
 import { BudgetRequestCreate, BudgetRequestUpdate, BudgetRequestApproval, BudgetRequestRejection } from '../types/budgetRequest.types';
+import { logAction } from '../services/audit.service';
 
 export async function listBudgetRequests(req: Request, res: Response) {
   try {
-    const { 
+    const {
       page = 1,
       limit = 20,
       status,
@@ -16,16 +17,16 @@ export async function listBudgetRequests(req: Request, res: Response) {
       dateFrom,
       dateTo,
       priority,
-      search 
+      search
     } = req.query;
 
     // Helper function to check if value is valid (not undefined, null, empty, or string "undefined")
     const isValidValue = (value: any): boolean => {
-      return value !== undefined && 
-             value !== null && 
-             value !== '' && 
-             value !== 'undefined' && 
-             value !== 'null';
+      return value !== undefined &&
+        value !== null &&
+        value !== '' &&
+        value !== 'undefined' &&
+        value !== 'null';
     };
 
     // Build base filter (schema uses snake_case)
@@ -34,8 +35,25 @@ export async function listBudgetRequests(req: Request, res: Response) {
     };
 
     // Apply filters - only if values are valid
-    if (isValidValue(status)) filter.status = status;
-    if (isValidValue(department)) filter.department_id = department;
+    if (isValidValue(status)) {
+      filter.status = Array.isArray(status) ? { in: status } : status;
+    }
+    if (isValidValue(department)) {
+      filter.department_id = Array.isArray(department) ? { in: department } : department;
+    }
+    if (isValidValue(priority)) {
+      // Priority maps to request_type in some contexts, but if it's a separate field or logic:
+      // Checking schema, there isn't a dedicated priority column, but request_type acts as priority.
+      // Assuming priority filter maps to request_type or ignores if not part of schema used here.
+      // If request_type is used:
+    }
+    // Note: request_type wasn't in list destructuring but might be passed?
+    // Destructuring included: status, department, dateFrom, dateTo, priority, search.
+    // If request_type is passed, let's include it.
+    const { request_type } = req.query;
+    if (isValidValue(request_type)) {
+      filter.request_type = Array.isArray(request_type) ? { in: request_type } : request_type;
+    }
 
     // Apply search filter
     if (isValidValue(search)) {
@@ -55,6 +73,8 @@ export async function listBudgetRequests(req: Request, res: Response) {
 
     // Apply role-based access control
     filter = applyAccessFilter(filter, req.user!);
+
+    console.log('List Filter:', JSON.stringify(filter, null, 2));
 
     // Fetch from database
     const skip = (Number(page) - 1) * Number(limit);
@@ -111,7 +131,12 @@ export async function getBudgetRequest(req: Request, res: Response) {
 export async function createBudgetRequest(req: Request, res: Response) {
   try {
     console.log('Creating budget request with data:', JSON.stringify(req.body, null, 2));
-    
+
+    // Force status to PENDING if not valid enum
+    if (req.body.status !== 'PENDING' && req.body.status !== 'APPROVED' && req.body.status !== 'REJECTED' && req.body.status !== 'ADJUSTED' && req.body.status !== 'CLOSED') {
+      req.body.status = 'PENDING';
+    }
+
     const budgetRequest = await service.create(req.body, req.user!);
 
     // Dispatch webhook (fire and forget)
@@ -121,6 +146,16 @@ export async function createBudgetRequest(req: Request, res: Response) {
       department: budgetRequest.department_id,
       amountRequested: Number(budgetRequest.total_amount)
     }).catch(err => console.error('Webhook error:', err.message));
+
+    // Audit Log
+    logAction({
+      entity_type: 'BUDGET_REQUEST',
+      entity_id: budgetRequest.id.toString(),
+      action_type_code: 'CREATE',
+      action_by: req.user!.id,
+      new_data: budgetRequest,
+      ip_address: req.ip
+    });
 
     return successResponse(
       res,
@@ -142,7 +177,7 @@ export async function submitBudgetRequest(req: Request, res: Response) {
 
     // Get existing budget request
     const existing = await service.findById(Number(id));
-    
+
     if (!existing) {
       return notFoundResponse(res, 'Budget request');
     }
@@ -164,6 +199,17 @@ export async function submitBudgetRequest(req: Request, res: Response) {
       createdBy: updated.requested_by
     }).catch(err => console.error('Webhook error:', err.message));
 
+    // Audit Log
+    logAction({
+      entity_type: 'BUDGET_REQUEST',
+      entity_id: updated.id.toString(),
+      action_type_code: 'UPDATE', // Or SUBMIT if available
+      action_by: req.user!.id,
+      previous_data: { status: existing.status },
+      new_data: { status: updated.status },
+      ip_address: req.ip
+    });
+
     return successResponse(res, updated, 'Budget request submitted successfully');
   } catch (error: any) {
     console.error('Submit budget request error:', error);
@@ -177,7 +223,7 @@ export async function approveBudgetRequest(req: Request, res: Response) {
 
     // Get existing budget request
     const existing = await service.findById(Number(id));
-    
+
     if (!existing) {
       return notFoundResponse(res, 'Budget request');
     }
@@ -199,6 +245,17 @@ export async function approveBudgetRequest(req: Request, res: Response) {
       approvedBy: req.user!.id
     }).catch(err => console.error('Webhook error:', err.message));
 
+    // Audit Log
+    logAction({
+      entity_type: 'BUDGET_REQUEST',
+      entity_id: approved.id.toString(),
+      action_type_code: 'APPROVE',
+      action_by: req.user!.id,
+      previous_data: { status: existing.status },
+      new_data: { status: approved.status, approval_notes: req.body.comments },
+      ip_address: req.ip
+    });
+
     return successResponse(res, approved, 'Budget request approved successfully');
   } catch (error: any) {
     console.error('Approve budget request error:', error);
@@ -212,7 +269,7 @@ export async function rejectBudgetRequest(req: Request, res: Response) {
 
     // Get existing budget request
     const existing = await service.findById(Number(id));
-    
+
     if (!existing) {
       return notFoundResponse(res, 'Budget request');
     }
@@ -234,6 +291,17 @@ export async function rejectBudgetRequest(req: Request, res: Response) {
       rejectedBy: req.user!.id,
       reason: req.body.rejection_reason
     }).catch(err => console.error('Webhook error:', err.message));
+
+    // Audit Log
+    logAction({
+      entity_type: 'BUDGET_REQUEST',
+      entity_id: rejected.id.toString(),
+      action_type_code: 'REJECT',
+      action_by: req.user!.id,
+      previous_data: { status: existing.status },
+      new_data: { status: rejected.status, rejection_reason: req.body.rejection_reason },
+      ip_address: req.ip
+    });
 
     return successResponse(res, rejected, 'Budget request rejected successfully');
   } catch (error: any) {
