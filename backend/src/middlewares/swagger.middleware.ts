@@ -71,20 +71,31 @@ export const setupSwagger = (app: Application): void => {
         hint: 'Set ENABLE_API_DOCS=true to enable documentation',
       });
     });
-    
+
     return;
   }
 
   try {
+    // Helper function to get the correct protocol (handles reverse proxies)
+    const getProtocol = (req: Request): string => {
+      // Check X-Forwarded-Proto header first (set by reverse proxies like Railway, Heroku, AWS ELB)
+      const forwardedProto = req.get('X-Forwarded-Proto');
+      if (forwardedProto) {
+        return forwardedProto.split(',')[0].trim(); // Handle multiple proxies
+      }
+      // Fall back to req.protocol (works with trust proxy enabled)
+      return req.protocol;
+    };
+
     // Serve OpenAPI JSON specification
     app.get('/api-docs.json', (req: Request, res: Response) => {
       res.setHeader('Content-Type', 'application/json');
-      
+
       // Dynamically set the server URL based on the request
-      const protocol = req.protocol;
+      const protocol = getProtocol(req);
       const host = req.get('host');
       const serverUrl = `${protocol}://${host}`;
-      
+
       // Clone the spec and update the server URL
       const dynamicSpec = {
         ...swaggerSpec,
@@ -95,7 +106,7 @@ export const setupSwagger = (app: Application): void => {
           },
         ],
       };
-      
+
       res.send(dynamicSpec);
     });
 
@@ -104,10 +115,10 @@ export const setupSwagger = (app: Application): void => {
       apiDocsPath,
       (req: Request, res: Response, next: NextFunction) => {
         // Dynamically set the server URL for each request
-        const protocol = req.protocol;
+        const protocol = getProtocol(req);
         const host = req.get('host');
         const serverUrl = `${protocol}://${host}`;
-        
+
         // Update swagger spec with current server URL
         (req as any).swaggerDoc = {
           ...swaggerSpec,
