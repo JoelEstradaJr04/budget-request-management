@@ -24,12 +24,13 @@ class ApiService {
 
   constructor() {
     this.baseUrl = API_BASE_URL;
-    
+
     // Load token from localStorage if available (client-side only)
     if (typeof window !== 'undefined') {
       this.token = localStorage.getItem('auth_token');
       this.mockRole = localStorage.getItem('mock_role') || 'Finance Admin';
       this.mockDepartment = localStorage.getItem('mock_department') || 'finance';
+      console.log('ApiService initialized with Base URL:', this.baseUrl);
     }
   }
 

@@ -9,8 +9,18 @@ import { apiLimiter } from './middlewares/rateLimit.middleware';
 const app: Application = express();
 
 // CORS configuration
+// CORS configuration
 app.use(cors({
-  origin: process.env.CORS_ORIGIN || '*',
+  origin: (origin, callback) => {
+    const allowedOrigins = (process.env.CORS_ORIGIN || '*').split(',');
+    // Allow requests with no origin (like mobile apps or curl requests)
+    if (!origin) return callback(null, true);
+    if (allowedOrigins.indexOf(origin) !== -1 || allowedOrigins.includes('*')) {
+      callback(null, true);
+    } else {
+      callback(new Error('Not allowed by CORS'));
+    }
+  },
   credentials: true
 }));
 
