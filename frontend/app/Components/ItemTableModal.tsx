@@ -86,10 +86,10 @@ const ItemTableModal: React.FC<ItemTableModalProps> = ({
   };
 
   const visibleFields = getVisibleFields();
-  
+
   // Filter required fields to only include visible fields
   const filteredRequiredFields = requiredFields.filter(field => visibleFields.includes(field));
-  
+
   const [items, setItems] = useState<ItemField[]>(initialItems);
   const [selectedIndex, setSelectedIndex] = useState<number | null>(null);
   const [searchTerm, setSearchTerm] = useState('');
@@ -214,124 +214,124 @@ const ItemTableModal: React.FC<ItemTableModalProps> = ({
       <div className={embedded ? "embedded-item-table" : "modal-content"}>
         {/* Only show add/edit form when NOT PR-linked */}
         {!isLinkedToPurchaseRequest && (
-        <form className="add-form">
-          {isLinkedToPurchaseRequest ? (
-            // PR-Linked Mode - All Fields
-            <>
-              <div className="form-row">
-                <div className="form-group">
-                  <label>Code {isRequired('code') && <span style={{ color: 'red' }}>*</span>}</label>
-                  <input type="text" value={formData.code || ''} onChange={(e) => handleFieldChange('code', e.target.value)} disabled={isReadOnly('code')} placeholder="PR Code" />
+          <div className="add-form">
+            {isLinkedToPurchaseRequest ? (
+              // PR-Linked Mode - All Fields
+              <>
+                <div className="form-row">
+                  <div className="form-group">
+                    <label>Code {isRequired('code') && <span style={{ color: 'red' }}>*</span>}</label>
+                    <input type="text" value={formData.code || ''} onChange={(e) => handleFieldChange('code', e.target.value)} disabled={isReadOnly('code')} placeholder="PR Code" />
+                  </div>
+                  <div className="form-group">
+                    <label>Department {isRequired('department') && <span style={{ color: 'red' }}>*</span>}</label>
+                    <input type="text" value={formData.department || ''} onChange={(e) => handleFieldChange('department', e.target.value)} disabled={isReadOnly('department')} placeholder="Department" />
+                  </div>
                 </div>
-                <div className="form-group">
-                  <label>Department {isRequired('department') && <span style={{ color: 'red' }}>*</span>}</label>
-                  <input type="text" value={formData.department || ''} onChange={(e) => handleFieldChange('department', e.target.value)} disabled={isReadOnly('department')} placeholder="Department" />
-                </div>
-              </div>
 
-              <div className="form-row">
-                <div className="form-group">
-                  <label>Item Code {isRequired('item_code') && <span style={{ color: 'red' }}>*</span>}</label>
-                  <input type="text" value={formData.item_code || ''} onChange={(e) => handleFieldChange('item_code', e.target.value)} disabled={isReadOnly('item_code')} placeholder="Item Code or N/A" />
+                <div className="form-row">
+                  <div className="form-group">
+                    <label>Item Code {isRequired('item_code') && <span style={{ color: 'red' }}>*</span>}</label>
+                    <input type="text" value={formData.item_code || ''} onChange={(e) => handleFieldChange('item_code', e.target.value)} disabled={isReadOnly('item_code')} placeholder="Item Code or N/A" />
+                  </div>
+                  <div className="form-group">
+                    <label>Item Name {isRequired('item_name') && <span style={{ color: 'red' }}>*</span>}</label>
+                    <input type="text" value={formData.item_name || ''} onChange={(e) => handleFieldChange('item_name', e.target.value)} disabled={isReadOnly('item_name')} placeholder="Item Name" />
+                  </div>
                 </div>
-                <div className="form-group">
-                  <label>Item Name {isRequired('item_name') && <span style={{ color: 'red' }}>*</span>}</label>
-                  <input type="text" value={formData.item_name || ''} onChange={(e) => handleFieldChange('item_name', e.target.value)} disabled={isReadOnly('item_name')} placeholder="Item Name" />
-                </div>
-              </div>
 
-              <div className="form-row">
-                <div className="form-group">
-                  <label>Unit Measure {isRequired('unit_measure') && <span style={{ color: 'red' }}>*</span>}</label>
-                  <input type="text" value={formData.unit_measure || ''} onChange={(e) => handleFieldChange('unit_measure', e.target.value)} disabled={isReadOnly('unit_measure')} placeholder="e.g., pcs, kg" />
+                <div className="form-row">
+                  <div className="form-group">
+                    <label>Unit Measure {isRequired('unit_measure') && <span style={{ color: 'red' }}>*</span>}</label>
+                    <input type="text" value={formData.unit_measure || ''} onChange={(e) => handleFieldChange('unit_measure', e.target.value)} disabled={isReadOnly('unit_measure')} placeholder="e.g., pcs, kg" />
+                  </div>
+                  <div className="form-group">
+                    <label>Supplier Code {isRequired('supplier_code') && <span style={{ color: 'red' }}>*</span>}</label>
+                    <input type="text" value={formData.supplier_code || ''} onChange={(e) => handleFieldChange('supplier_code', e.target.value)} disabled={isReadOnly('supplier_code')} placeholder="Supplier Code or N/A" />
+                  </div>
                 </div>
-                <div className="form-group">
-                  <label>Supplier Code {isRequired('supplier_code') && <span style={{ color: 'red' }}>*</span>}</label>
-                  <input type="text" value={formData.supplier_code || ''} onChange={(e) => handleFieldChange('supplier_code', e.target.value)} disabled={isReadOnly('supplier_code')} placeholder="Supplier Code or N/A" />
-                </div>
-              </div>
 
-              <div className="form-row">
-                <div className="form-group">
-                  <label>Supplier Name {isRequired('supplier_name') && <span style={{ color: 'red' }}>*</span>}</label>
-                  <input type="text" value={formData.supplier_name || ''} onChange={(e) => handleFieldChange('supplier_name', e.target.value)} disabled={isReadOnly('supplier_name')} placeholder="Supplier Name" />
+                <div className="form-row">
+                  <div className="form-group">
+                    <label>Supplier Name {isRequired('supplier_name') && <span style={{ color: 'red' }}>*</span>}</label>
+                    <input type="text" value={formData.supplier_name || ''} onChange={(e) => handleFieldChange('supplier_name', e.target.value)} disabled={isReadOnly('supplier_name')} placeholder="Supplier Name" />
+                  </div>
+                  <div className="form-group">
+                    <label>Supplier Unit Measure {isRequired('supplier_unit_measure') && <span style={{ color: 'red' }}>*</span>}</label>
+                    <input type="text" value={formData.supplier_unit_measure || ''} onChange={(e) => handleFieldChange('supplier_unit_measure', e.target.value)} disabled={isReadOnly('supplier_unit_measure')} placeholder="Supplier Unit" />
+                  </div>
                 </div>
-                <div className="form-group">
-                  <label>Supplier Unit Measure {isRequired('supplier_unit_measure') && <span style={{ color: 'red' }}>*</span>}</label>
-                  <input type="text" value={formData.supplier_unit_measure || ''} onChange={(e) => handleFieldChange('supplier_unit_measure', e.target.value)} disabled={isReadOnly('supplier_unit_measure')} placeholder="Supplier Unit" />
-                </div>
-              </div>
 
-              <div className="form-row">
-                <div className="form-group">
-                  <label>Conversion {isRequired('conversion') && <span style={{ color: 'red' }}>*</span>}</label>
-                  <input type="number" value={formData.conversion || 1} onChange={(e) => handleFieldChange('conversion', parseFloat(e.target.value) || 1)} disabled={isReadOnly('conversion')} min="0" step="0.01" />
+                <div className="form-row">
+                  <div className="form-group">
+                    <label>Conversion {isRequired('conversion') && <span style={{ color: 'red' }}>*</span>}</label>
+                    <input type="number" value={formData.conversion || 1} onChange={(e) => handleFieldChange('conversion', parseFloat(e.target.value) || 1)} disabled={isReadOnly('conversion')} min="0" step="0.01" />
+                  </div>
+                  <div className="form-group">
+                    <label>Unit Cost {isRequired('unit_cost') && <span style={{ color: 'red' }}>*</span>}</label>
+                    <input type="number" value={formData.unit_cost || 0} onChange={(e) => handleFieldChange('unit_cost', parseFloat(e.target.value) || 0)} disabled={isReadOnly('unit_cost')} min="0" step="0.01" />
+                  </div>
                 </div>
-                <div className="form-group">
-                  <label>Unit Cost {isRequired('unit_cost') && <span style={{ color: 'red' }}>*</span>}</label>
-                  <input type="number" value={formData.unit_cost || 0} onChange={(e) => handleFieldChange('unit_cost', parseFloat(e.target.value) || 0)} disabled={isReadOnly('unit_cost')} min="0" step="0.01" />
-                </div>
-              </div>
 
-              <div className="form-row">
-                <div className="form-group">
-                  <label>Quantity {isRequired('quantity') && <span style={{ color: 'red' }}>*</span>}</label>
-                  <input type="number" value={formData.quantity || 0} onChange={(e) => handleFieldChange('quantity', parseFloat(e.target.value) || 0)} disabled={isReadOnly('quantity')} min="0" step="0.01" />
+                <div className="form-row">
+                  <div className="form-group">
+                    <label>Quantity {isRequired('quantity') && <span style={{ color: 'red' }}>*</span>}</label>
+                    <input type="number" value={formData.quantity || 0} onChange={(e) => handleFieldChange('quantity', parseFloat(e.target.value) || 0)} disabled={isReadOnly('quantity')} min="0" step="0.01" />
+                  </div>
+                  <div className="form-group">
+                    <label>Subtotal</label>
+                    <input type="number" value={formData.subtotal || 0} disabled style={{ backgroundColor: 'var(--background-color)', cursor: 'not-allowed' }} />
+                  </div>
                 </div>
-                <div className="form-group">
-                  <label>Subtotal</label>
-                  <input type="number" value={formData.subtotal || 0} disabled style={{ backgroundColor: 'var(--background-color)', cursor: 'not-allowed' }} />
+              </>
+            ) : (
+              // NoLinked Mode - Simplified Fields
+              <>
+                <div className="form-row">
+                  <div className="form-group">
+                    <label>Item Name {isRequired('item_name') && <span style={{ color: 'red' }}>*</span>}</label>
+                    <input type="text" value={formData.item_name || ''} onChange={(e) => handleFieldChange('item_name', e.target.value)} disabled={isReadOnly('item_name')} placeholder="Item Name" />
+                  </div>
+                  <div className="form-group">
+                    <label>Quantity {isRequired('quantity') && <span style={{ color: 'red' }}>*</span>}</label>
+                    <input type="number" value={formData.quantity || 0} onChange={(e) => handleFieldChange('quantity', parseFloat(e.target.value) || 0)} disabled={isReadOnly('quantity')} min="0" step="0.01" />
+                  </div>
                 </div>
-              </div>
-            </>
-          ) : (
-            // NoLinked Mode - Simplified Fields
-            <>
-              <div className="form-row">
-                <div className="form-group">
-                  <label>Item Name {isRequired('item_name') && <span style={{ color: 'red' }}>*</span>}</label>
-                  <input type="text" value={formData.item_name || ''} onChange={(e) => handleFieldChange('item_name', e.target.value)} disabled={isReadOnly('item_name')} placeholder="Item Name" />
-                </div>
-                <div className="form-group">
-                  <label>Quantity {isRequired('quantity') && <span style={{ color: 'red' }}>*</span>}</label>
-                  <input type="number" value={formData.quantity || 0} onChange={(e) => handleFieldChange('quantity', parseFloat(e.target.value) || 0)} disabled={isReadOnly('quantity')} min="0" step="0.01" />
-                </div>
-              </div>
 
-              <div className="form-row">
-                <div className="form-group">
-                  <label>Unit Measure {isRequired('unit_measure') && <span style={{ color: 'red' }}>*</span>}</label>
-                  <input type="text" value={formData.unit_measure || ''} onChange={(e) => handleFieldChange('unit_measure', e.target.value)} disabled={isReadOnly('unit_measure')} placeholder="e.g., pcs, kg" />
+                <div className="form-row">
+                  <div className="form-group">
+                    <label>Unit Measure {isRequired('unit_measure') && <span style={{ color: 'red' }}>*</span>}</label>
+                    <input type="text" value={formData.unit_measure || ''} onChange={(e) => handleFieldChange('unit_measure', e.target.value)} disabled={isReadOnly('unit_measure')} placeholder="e.g., pcs, kg" />
+                  </div>
+                  <div className="form-group">
+                    <label>Unit Cost {isRequired('unit_cost') && <span style={{ color: 'red' }}>*</span>}</label>
+                    <input type="number" value={formData.unit_cost || 0} onChange={(e) => handleFieldChange('unit_cost', parseFloat(e.target.value) || 0)} disabled={isReadOnly('unit_cost')} min="0" step="0.01" />
+                  </div>
                 </div>
-                <div className="form-group">
-                  <label>Unit Cost {isRequired('unit_cost') && <span style={{ color: 'red' }}>*</span>}</label>
-                  <input type="number" value={formData.unit_cost || 0} onChange={(e) => handleFieldChange('unit_cost', parseFloat(e.target.value) || 0)} disabled={isReadOnly('unit_cost')} min="0" step="0.01" />
-                </div>
-              </div>
 
-              <div className="form-row">
-                <div className="form-group">
-                  <label>Supplier {isRequired('supplier_name') && <span style={{ color: 'red' }}>*</span>}</label>
-                  <input type="text" value={formData.supplier_name || ''} onChange={(e) => handleFieldChange('supplier_name', e.target.value)} disabled={isReadOnly('supplier_name')} placeholder="Supplier Name" />
+                <div className="form-row">
+                  <div className="form-group">
+                    <label>Supplier {isRequired('supplier_name') && <span style={{ color: 'red' }}>*</span>}</label>
+                    <input type="text" value={formData.supplier_name || ''} onChange={(e) => handleFieldChange('supplier_name', e.target.value)} disabled={isReadOnly('supplier_name')} placeholder="Supplier Name" />
+                  </div>
+                  <div className="form-group">
+                    <label>Subtotal</label>
+                    <input type="number" value={formData.subtotal || 0} disabled style={{ backgroundColor: 'var(--background-color)', cursor: 'not-allowed' }} />
+                  </div>
                 </div>
-                <div className="form-group">
-                  <label>Subtotal</label>
-                  <input type="number" value={formData.subtotal || 0} disabled style={{ backgroundColor: 'var(--background-color)', cursor: 'not-allowed' }} />
-                </div>
-              </div>
-            </>
-          )}
+              </>
+            )}
 
-          {mode !== 'view' && (
-            <div className="modal-actions">
-              <button type="button" className="cancel-btn" onClick={handleCancel} disabled={selectedIndex === null}>Cancel</button>
-              <button type="button" className="submit-btn" onClick={handleAddOrUpdate} disabled={!isFormValid()}>
-                <i className={`ri-${selectedIndex !== null ? 'refresh' : 'add'}-line`} />
-                {selectedIndex !== null ? 'Update' : 'Add'}
-              </button>
-            </div>
-          )}
-        </form>
+            {mode !== 'view' && (
+              <div className="modal-actions">
+                <button type="button" className="cancel-btn" onClick={handleCancel} disabled={selectedIndex === null}>Cancel</button>
+                <button type="button" className="submit-btn" onClick={handleAddOrUpdate} disabled={!isFormValid()}>
+                  <i className={`ri-${selectedIndex !== null ? 'refresh' : 'add'}-line`} />
+                  {selectedIndex !== null ? 'Update' : 'Add'}
+                </button>
+              </div>
+            )}
+          </div>
         )}
 
         <div className="form-group" style={{ marginTop: '20px' }}>

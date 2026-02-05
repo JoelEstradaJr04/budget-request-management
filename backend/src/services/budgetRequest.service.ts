@@ -59,7 +59,7 @@ export async function findById(id: number, options: any = {}) {
 
 export async function create(data: any, user: UserContext) {
   console.log('Service create called with data:', JSON.stringify(data, null, 2));
-  
+
   // Calculate total amount from items if not provided
   let totalAmount = data.total_amount || data.amountRequested || 0;
   if ((!totalAmount || totalAmount === 0) && data.items && data.items.length > 0) {
@@ -76,6 +76,7 @@ export async function create(data: any, user: UserContext) {
         department_id: data.department || data.department_id,
         department_name: data.department_name || null,
         requested_by: user.id,
+        requester_position: data.requester_position || data.position || 'Staff', // Default to Staff if missing
         requested_for: data.requested_for || null,
         total_amount: totalAmount,
         purpose: data.purpose || null,
@@ -84,6 +85,17 @@ export async function create(data: any, user: UserContext) {
         pr_reference_code: data.pr_reference_code || data.linkedPurchaseRequestRefNo || null,
         status: data.status || 'PENDING'
       }
+    });
+
+    // Generate formatted request code (BR-YYYY-XXXXX)
+    const year = new Date().getFullYear();
+    const sequence = br.id.toString().padStart(5, '0');
+    const formattedCode = `BR-${year}-${sequence}`;
+
+    // Update the request with the formatted code
+    await tx.budget_request.update({
+      where: { id: br.id },
+      data: { request_code: formattedCode }
     });
 
     // Create request items if provided
@@ -235,7 +247,8 @@ export async function updateBudgetRequest(id: number, data: any, user: UserConte
       purpose: data.purpose,
       remarks: data.remarks,
       request_type: data.request_type,
-      department_name: data.department_name
+      department_name: data.department_name,
+      department_id: data.department || data.department_id
     },
     include: {
       items: {

@@ -52,6 +52,7 @@ export interface CreateBudgetRequestDto {
   request_type?: 'REGULAR' | 'PROJECT_BASED' | 'URGENT' | 'EMERGENCY';
   pr_reference_code?: string;
   items?: BudgetRequestItem[];
+  status?: string;
 }
 
 export interface UpdateBudgetRequestDto {

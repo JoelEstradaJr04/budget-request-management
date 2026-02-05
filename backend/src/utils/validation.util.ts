@@ -4,52 +4,52 @@ import Joi from 'joi';
 export const budgetRequestSchema = Joi.object({
   // Accept both formats for backwards compatibility
   department: Joi.string()
-    .valid('finance', 'hr', 'inventory', 'operations')
+    .valid('finance', 'hr', 'inventory', 'operations', 'Finance', 'HR', 'Inventory', 'Operational')
     .optional(),
-  
+
   department_id: Joi.string()
-    .valid('finance', 'hr', 'inventory', 'operations')
+    .valid('finance', 'hr', 'inventory', 'operations', 'Finance', 'HR', 'Inventory', 'Operational')
     .optional(),
-  
+
   department_name: Joi.string().optional(),
-  
+
   // Accept both formats
   amountRequested: Joi.number()
     .positive()
     .max(10000000)
     .optional(),
-  
+
   total_amount: Joi.number()
     .positive()
     .max(10000000)
     .optional(),
-  
+
   purpose: Joi.string()
     .min(10)
     .max(500)
     .optional(),
-  
+
   remarks: Joi.string()
     .max(5000)
     .optional(),
-  
+
   request_type: Joi.string()
     .valid('REGULAR', 'PROJECT_BASED', 'URGENT', 'EMERGENCY')
     .optional(),
-  
+
   requestType: Joi.string()
     .valid('REGULAR', 'PROJECT_BASED', 'URGENT', 'EMERGENCY')
     .optional(),
-  
+
   status: Joi.string()
     .valid('PENDING', 'APPROVED', 'REJECTED', 'ADJUSTED', 'CLOSED')
     .optional(),
-  
+
   requested_for: Joi.string().optional(),
-  
+
   pr_reference_code: Joi.string().optional(),
   linkedPurchaseRequestRefNo: Joi.string().optional(),
-  
+
   items: Joi.array()
     .items(
       Joi.object({
@@ -59,7 +59,7 @@ export const budgetRequestSchema = Joi.object({
         requested_amount: Joi.number().min(0).optional(),
         notes: Joi.string().optional(),
         pr_item_id: Joi.number().optional(),
-        
+
         // Old naming conventions for backward compatibility
         itemName: Joi.string().optional(),
         item_name: Joi.string().optional(),
@@ -76,7 +76,7 @@ export const budgetRequestSchema = Joi.object({
       })
     )
     .optional(),
-  
+
   supporting_documents: Joi.array().optional(),
   attachments: Joi.array().optional()
 }).unknown(true).or('department', 'department_id').or('amountRequested', 'total_amount'); // Allow additional fields and require at least one key field
@@ -87,7 +87,8 @@ export function validateBudgetRequest(data: any) {
 
 export const approvalSchema = Joi.object({
   remarks: Joi.string().min(10).max(2000).optional(),
-  reviewNotes: Joi.string().min(10).max(2000).optional() // backward compatibility
+  reviewNotes: Joi.string().min(10).max(2000).optional(), // backward compatibility
+  approved_amount: Joi.number().positive().optional()
 });
 
 export const rejectionSchema = Joi.object({

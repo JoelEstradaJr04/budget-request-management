@@ -5,16 +5,34 @@ import routes from './routes';
 import { errorHandler, notFoundHandler } from './middlewares/errorHandler.middleware';
 import { requestLogger } from './middlewares/requestLogger.middleware';
 import { apiLimiter } from './middlewares/rateLimit.middleware';
+import { setupSwagger, validateSwaggerSpec } from './middlewares/swagger.middleware';
+import { env } from './config/env';
 
 const app: Application = express();
 
-// CORS configuration - parse comma-separated origins into array
-const corsOrigins = process.env.CORS_ORIGIN 
-  ? process.env.CORS_ORIGIN.split(',').map(origin => origin.trim())
-  : '*';
+// Trust proxy headers (required for Railway, Heroku, AWS ELB, etc.)
+// This allows req.protocol to correctly return 'https' when behind a reverse proxy
+// Railway sets X-Forwarded-Proto header which Express will use when this is enabled
+app.set('trust proxy', 1);
 
+// Validate Swagger specification on startup (if enabled)
+if (env.ENABLE_API_DOCS) {
+  validateSwaggerSpec();
+}
+
+// CORS configuration
+// CORS configuration
 app.use(cors({
-  origin: corsOrigins,
+  origin: (origin, callback) => {
+    const allowedOrigins = (env.CORS_ORIGIN || '*').split(',');
+    // Allow requests with no origin (like mobile apps or curl requests)
+    if (!origin) return callback(null, true);
+    if (allowedOrigins.indexOf(origin) !== -1 || allowedOrigins.includes('*')) {
+      callback(null, true);
+    } else {
+      callback(new Error('Not allowed by CORS'));
+    }
+  },
   credentials: true
 }));
 
@@ -27,6 +45,9 @@ app.use(requestLogger);
 
 // Rate limiting
 app.use('/api', apiLimiter);
+
+// Setup Swagger/OpenAPI documentation (if enabled)
+setupSwagger(app);
 
 // API routes
 app.use('/api', routes);
