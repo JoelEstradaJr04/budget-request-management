@@ -11,6 +11,7 @@ export interface AuditLogPayload {
     entity_id: string;
     action_type_code: string;
     action_by: string;
+    action_from: string;
     previous_data?: any;
     new_data?: any;
     ip_address?: string;

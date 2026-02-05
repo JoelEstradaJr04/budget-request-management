@@ -8,6 +8,7 @@ export interface ApiResponse<T = any> {
   data?: T;
   message?: string;
   error?: string;
+  errors?: any[];
   pagination?: {
     total: number;
     page: number;
@@ -134,6 +135,7 @@ class ApiService {
           success: false,
           error: data.message || data.error || 'An error occurred',
           message: data.message,
+          errors: data.errors
         };
       }
 

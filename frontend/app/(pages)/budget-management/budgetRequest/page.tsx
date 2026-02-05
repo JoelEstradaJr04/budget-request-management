@@ -12,7 +12,8 @@ import Loading from '../../../Components/loading';
 import { showSuccess, showError } from '../../../utils/Alerts';
 import FilterDropdown, { FilterSection } from "../../../Components/filter";
 import AddBudgetRequest from './recordBudgetRequest';
-import EditBudgetRequest from './editBudgetRequest';
+import EditRecordBudgetRequest from './editRecordBudgetRequest';
+
 import ViewBudgetRequest from './viewBudgetRequest';
 import AuditTrailBudgetRequest from './auditTrailBudgetRequest';
 import budgetRequestService, {
@@ -62,6 +63,13 @@ interface BudgetRequest {
   created_at: string;
   updated_at?: string;
   is_deleted: boolean;
+  // New fields
+  fiscal_year?: number;
+  fiscal_period?: string;
+  category?: string;
+  start_date?: string;
+  end_date?: string;
+  urgency_reason?: string;
 }
 
 const BudgetRequestPage = () => {
@@ -377,23 +385,34 @@ const BudgetRequestPage = () => {
       console.log('Original newRequest received:', newRequest);
       console.log('Items from newRequest:', newRequest.items);
 
-      const createDto: CreateBudgetRequestDto = {
+      const amount = newRequest.amountRequested || newRequest.total_amount || 0;
+
+      const createDto: any = {
         department_id: user?.department || 'operations',
         department_name: user?.department || 'Operations',
         requested_by: user?.username || 'Unknown User',
-        requested_for: newRequest.requested_for,
-        total_amount: newRequest.amountRequested || newRequest.total_amount || 0,
-        purpose: newRequest.purpose,
-        remarks: newRequest.justification || newRequest.remarks,
+        requested_for: newRequest.requested_for || undefined,
+        total_amount: amount > 0 ? amount : undefined,
+        purpose: (newRequest.purpose && newRequest.purpose.length >= 10) ? newRequest.purpose : undefined,
+        remarks: newRequest.justification || newRequest.remarks || undefined,
         request_type: (newRequest.priority === 'urgent' ? 'URGENT' :
           newRequest.priority === 'high' ? 'PROJECT_BASED' :
             'REGULAR') as 'REGULAR' | 'PROJECT_BASED' | 'URGENT' | 'EMERGENCY',
-        pr_reference_code: newRequest.pr_reference_code,
-        items: newRequest.items,
-        status: newRequest.status
+        pr_reference_code: newRequest.pr_reference_code || undefined,
+        items: (newRequest.items && newRequest.items.length > 0) ? newRequest.items : undefined,
+        // Map frontend statuses (DRAFT, SUBMITTED) to backend enum (PENDING)
+        status: ['APPROVED', 'REJECTED', 'ADJUSTED', 'CLOSED'].includes(newRequest.status) ? newRequest.status : 'PENDING',
+
+        // New fields
+        fiscal_year: newRequest.fiscalYear || 2025,
+        fiscal_period: newRequest.fiscalPeriod || undefined,
+        category: newRequest.category || undefined,
+        start_date: newRequest.start_date || undefined,
+        end_date: newRequest.end_date || undefined,
+        urgency_reason: newRequest.urgencyReason || undefined
       };
 
-      console.log('CreateDTO being sent:', createDto);
+      console.log('CreateDTO being sent (sanitized):', createDto);
       console.log('Items in DTO:', createDto.items);
 
       const response = await budgetRequestService.create(createDto);
@@ -416,11 +435,25 @@ const BudgetRequestPage = () => {
         showSuccess('Budget request created successfully', 'Success');
         closeModal();
       } else {
-        console.error('Creation failed:', response.error);
-        // Clean up error message
-        const errorMessage = response.error?.includes('requester_position')
-          ? 'Missing required field: Position'
-          : (response.error || 'Failed to create budget request');
+        console.error('Creation failed:', response.error, response.errors);
+
+        let errorMessage = response.error || 'Failed to create budget request';
+
+        // If we have detailed validation errors, format them
+        if (response.errors && response.errors.length > 0) {
+          const detailedErrors = response.errors.map((err: any) => `${err.field}: ${err.message}`).join('\n');
+          errorMessage = `Validation Failed:\n${detailedErrors}`;
+        } else if (errorMessage === 'Validation failed') {
+          // Fallback if no details
+          errorMessage = 'Validation failed. Please check all fields.';
+        }
+
+        console.log('Final Error Message:', errorMessage);
+        console.log('Errors Array:', JSON.stringify(response.errors || [], null, 2));
+
+        // Force visible alert for debugging
+        window.alert(errorMessage);
+
         showError(errorMessage, 'Creation Failed');
       }
     } catch (error: any) {
@@ -506,7 +539,7 @@ const BudgetRequestPage = () => {
         break;
       case 'edit':
         content = (
-          <EditBudgetRequest
+          <EditRecordBudgetRequest
             request={rowData!}
             onClose={closeModal}
             onUpdate={handleUpdate}
@@ -548,7 +581,6 @@ const BudgetRequestPage = () => {
   };
 
   const handleEdit = (item: BudgetRequest) => {
-    console.log('Edit:', item);
     openModal('edit', item);
   };
 

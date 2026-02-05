@@ -153,6 +153,7 @@ export async function createBudgetRequest(req: Request, res: Response) {
       entity_id: budgetRequest.id.toString(),
       action_type_code: 'CREATE',
       action_by: req.user!.id,
+      action_from: req.user!.department || 'System',
       new_data: budgetRequest,
       ip_address: req.ip
     });
@@ -203,8 +204,9 @@ export async function submitBudgetRequest(req: Request, res: Response) {
     logAction({
       entity_type: 'BUDGET_REQUEST',
       entity_id: updated.id.toString(),
-      action_type_code: 'UPDATE', // Or SUBMIT if available
+      action_type_code: 'SUBMIT',
       action_by: req.user!.id,
+      action_from: req.user!.department || 'System',
       previous_data: { status: existing.status },
       new_data: { status: updated.status },
       ip_address: req.ip
@@ -251,6 +253,7 @@ export async function approveBudgetRequest(req: Request, res: Response) {
       entity_id: approved.id.toString(),
       action_type_code: 'APPROVE',
       action_by: req.user!.id,
+      action_from: req.user!.department || 'System',
       previous_data: { status: existing.status },
       new_data: { status: approved.status, approval_notes: req.body.comments },
       ip_address: req.ip
@@ -298,6 +301,7 @@ export async function rejectBudgetRequest(req: Request, res: Response) {
       entity_id: rejected.id.toString(),
       action_type_code: 'REJECT',
       action_by: req.user!.id,
+      action_from: req.user!.department || 'System',
       previous_data: { status: existing.status },
       new_data: { status: rejected.status, rejection_reason: req.body.rejection_reason },
       ip_address: req.ip
@@ -307,5 +311,86 @@ export async function rejectBudgetRequest(req: Request, res: Response) {
   } catch (error: any) {
     console.error('Reject budget request error:', error);
     return errorResponse(res, error.message || 'Failed to reject budget request');
+  }
+}
+
+export async function updateBudgetRequest(req: Request, res: Response) {
+  try {
+    const { id } = req.params;
+
+    // Get existing budget request
+    const existing = await service.findById(Number(id));
+
+    if (!existing) {
+      return notFoundResponse(res, 'Budget request');
+    }
+
+    // Verify ownership (only requester can update, or maybe admin too? usually just requester for basic details)
+    // Assuming admin can also update or strictly requester? Let's allow admin too for now or follow submit logic.
+    if (existing.requested_by !== req.user!.id && !req.user!.role.toLowerCase().includes('admin')) {
+      return forbiddenResponse(res, 'Only the requester or admins can update this request');
+    }
+
+    const updated = await service.updateBudgetRequest(Number(id), req.body, req.user!);
+
+    // Audit Log
+    logAction({
+      entity_type: 'BUDGET_REQUEST',
+      entity_id: updated.id.toString(),
+      action_type_code: 'UPDATE',
+      action_by: req.user!.id,
+      action_from: req.user!.department || 'System',
+      previous_data: existing,
+      new_data: updated,
+      ip_address: req.ip
+    });
+
+    return successResponse(res, updated, 'Budget request updated successfully');
+  } catch (error: any) {
+    console.error('Update budget request error:', error);
+    return errorResponse(res, error.message || 'Failed to update budget request');
+  }
+}
+
+export async function deleteBudgetRequest(req: Request, res: Response) {
+  try {
+    const { id } = req.params;
+
+    // Get existing budget request
+    const existing = await service.findById(Number(id));
+
+    if (!existing) {
+      return notFoundResponse(res, 'Budget request');
+    }
+
+    // Verify ownership
+    if (existing.requested_by !== req.user!.id && !req.user!.role.toLowerCase().includes('admin')) {
+      return forbiddenResponse(res, 'Only the requester or admins can delete this request');
+    }
+
+    // Check if can be deleted (e.g. only PENDING) - logic might be in service or here.
+    // Service delete usually does soft delete.
+    if (existing.status !== 'PENDING') {
+      return errorResponse(res, 'Cannot delete a budget request that is not PENDING', 400);
+    }
+
+    await service.deleteBudgetRequest(Number(id), req.user!);
+
+    // Audit Log
+    logAction({
+      entity_type: 'BUDGET_REQUEST',
+      entity_id: existing.id.toString(),
+      action_type_code: 'DELETE',
+      action_by: req.user!.id,
+      action_from: req.user!.department || 'System',
+      previous_data: existing,
+      new_data: null, // DELETE requires new_data to be null
+      ip_address: req.ip
+    });
+
+    return successResponse(res, null, 'Budget request deleted successfully');
+  } catch (error: any) {
+    console.error('Delete budget request error:', error);
+    return errorResponse(res, error.message || 'Failed to delete budget request');
   }
 }

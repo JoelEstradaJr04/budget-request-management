@@ -82,7 +82,7 @@ const AddBudgetRequest: React.FC<AddBudgetRequestProps> = ({
     department: 'Finance', // Auto-filled
     createdByName: 'Finance Admin', // Auto-filled
     createdByPosition: 'Admin', // Auto-filled
-    fiscalYear: 2025,
+    fiscalYear: new Date().getFullYear(),
     fiscalPeriod: '',
     category: '',
     priority: '',
@@ -341,6 +341,7 @@ const AddBudgetRequest: React.FC<AddBudgetRequestProps> = ({
 
   const handleSubmit = async (e: React.FormEvent | React.MouseEvent, saveAsDraft: boolean = false) => {
     e.preventDefault();
+    e.stopPropagation(); // Prevent event bubbling
     console.log('handleSubmit called', { saveAsDraft, formData, items });
 
     // Validate required fields only if not saving as draft
@@ -354,7 +355,7 @@ const AddBudgetRequest: React.FC<AddBudgetRequestProps> = ({
         return !value || value === '';
       });
 
-      console.log('Validation check:', { missingFields, formData });
+
 
       if (missingFields.length > 0) {
         const fieldLabels = missingFields.map(f => validationRules[f as FieldName]?.label || f).join(', ');
@@ -379,16 +380,15 @@ const AddBudgetRequest: React.FC<AddBudgetRequestProps> = ({
           return;
         }
       }
-    }
 
-    // Validate date range if both dates are provided
-    if (formData.start_date && formData.end_date) {
-      const startDate = new Date(formData.start_date);
-      const endDate = new Date(formData.end_date);
-
-      if (startDate >= endDate) {
-        showError('End date must be after start date', 'Invalid Date Range');
-        return;
+      // Validate date range if both dates are provided
+      if (formData.start_date && formData.end_date) {
+        const startDate = new Date(formData.start_date);
+        const endDate = new Date(formData.end_date);
+        if (startDate >= endDate) {
+          showError('End date must be after start date', 'Invalid Date Range');
+          return;
+        }
       }
     }
 
@@ -398,7 +398,6 @@ const AddBudgetRequest: React.FC<AddBudgetRequestProps> = ({
         !item.description ||
         item.requested_amount <= 0
       );
-
       if (invalidItems.length > 0) {
         showError('Please complete all item fields (description and amount) or remove incomplete items', 'Invalid Items');
         return;
@@ -406,35 +405,34 @@ const AddBudgetRequest: React.FC<AddBudgetRequestProps> = ({
     }
 
     const action = saveAsDraft ? 'save as draft' : 'submit for approval';
-    console.log('Showing confirmation dialog for:', action);
 
+    // Wait for events to settle
+    await new Promise(resolve => setTimeout(resolve, 100));
+
+    // Temporary Debugging: Use native confirm to bypass SweetAlert issues
     const result = await showConfirmation(
-      `Are you sure you want to ${action} this budget request?`,
+      `Are you sure you want to ${action}?`,
       `Confirm ${saveAsDraft ? 'Draft' : 'Submit'}`
     );
-
-    console.log('Confirmation result:', result);
 
     if (result.isConfirmed) {
       try {
         const payload: NewBudgetRequest = {
           ...formData,
-          status: saveAsDraft ? 'DRAFT' : 'SUBMITTED',
+          status: saveAsDraft ? 'DRAFT' : 'SUBMITTED', // Map to DRAFT if backend supports it, or PENDING
           items: showItems && items.length > 0 ? items : undefined,
           supporting_documents: supportingDocuments.length > 0 ? supportingDocuments : undefined
         };
 
-        console.log('Sending payload:', payload);
         await onAddBudgetRequest(payload);
         showSuccess(
           `Budget request ${saveAsDraft ? 'saved as draft' : 'submitted for approval'} successfully`,
           'Success'
         );
         onClose();
-      } catch (error: unknown) {
-        console.error('Error adding budget request:', error);
-        const errorMessage = error instanceof Error ? error.message : 'An unknown error occurred';
-        showError('Failed to add budget request: ' + errorMessage, 'Error');
+      } catch (error: any) {
+        console.error('Error submitting request:', error);
+        showError('Error: ' + (error instanceof Error ? error.message : String(error)), 'Error');
       }
     }
   };
@@ -498,7 +496,7 @@ const AddBudgetRequest: React.FC<AddBudgetRequestProps> = ({
                     onChange={handleInputChange}
                     required
                     className="formSelect"
-                    disabled ={true}
+                    disabled={true}
                   >
                     <option value="Finance">Finance</option>
                     <option value="HR">HR</option>
@@ -734,7 +732,8 @@ const AddBudgetRequest: React.FC<AddBudgetRequestProps> = ({
                     onChange={handleInputChange}
                     required
                     className="formInput"
-                    min={new Date().toISOString().split('T')[0]}
+                    min={`${formData.fiscalYear}-01-01`}
+                    max={`${formData.fiscalYear} -12 - 31`}
                   />
                   {validationErrors.start_date && (
                     <div className="error-message">{validationErrors.start_date}</div>
@@ -751,7 +750,8 @@ const AddBudgetRequest: React.FC<AddBudgetRequestProps> = ({
                     onChange={handleInputChange}
                     required
                     className="formInput"
-                    min={formData.start_date || new Date().toISOString().split('T')[0]}
+                    min={formData.start_date || `${formData.fiscalYear}-01-01`}
+                    max={`${formData.fiscalYear} -12 - 31`}
                   />
                   {validationErrors.end_date && (
                     <div className="error-message">{validationErrors.end_date}</div>
@@ -849,7 +849,7 @@ const AddBudgetRequest: React.FC<AddBudgetRequestProps> = ({
               <div className="sectionHeader">Supporting Documents (Optional)</div>
 
               <div
-                className={`fileUploadSection ${dragOver ? 'dragOver' : ''}`}
+                className={`fileUploadSection ${dragOver ? 'dragOver' : ''} `}
                 onDragOver={(e) => { e.preventDefault(); setDragOver(true); }}
                 onDragLeave={() => setDragOver(false)}
                 onDrop={handleDrop}
@@ -902,91 +902,16 @@ const AddBudgetRequest: React.FC<AddBudgetRequestProps> = ({
             <button
               type="button"
               className="saveAsDraftButton"
-              disabled={!isFormValid}
               title={!isFormValid ? "Please fix all validation errors before saving" : "Save as draft"}
-              onClick={async (e) => {
-                console.log('Save as Draft button clicked - START');
-                e.preventDefault();
-                e.stopPropagation();
-
-                if (!isFormValid) {
-                  showError('Please fix all validation errors before saving', 'Error');
-                  return;
-                }
-
-                try {
-                  console.log('Creating draft payload...', formData);
-                  const payload: NewBudgetRequest = {
-                    ...formData,
-                    status: 'PENDING', // Mapped to PENDING as DRAFT is not in schema
-                    items: showItems && items.length > 0 ? items : undefined,
-                    supporting_documents: supportingDocuments.length > 0 ? supportingDocuments : undefined
-                  };
-
-                  console.log('Calling onAddBudgetRequest with payload:', payload);
-                  await onAddBudgetRequest(payload);
-                  console.log('onAddBudgetRequest completed successfully');
-
-                  showSuccess('Draft saved successfully!', 'Success');
-                  onClose();
-                } catch (error) {
-                  console.error('Error saving draft:', error);
-                  showError('Error saving draft: ' + (error instanceof Error ? error.message : String(error)), 'Error');
-                }
-              }}
+              onClick={(e) => handleSubmit(e, true)}
             >
               <i className="ri-draft-line" /> Save as Draft
             </button>
             <button
               type="button"
               className="submitButton"
-              disabled={!isFormValid}
               title={!isFormValid ? "Please fix all validation errors before submitting" : "Submit for approval"}
-              onClick={async (e) => {
-                console.log('Submit for Approval button clicked - START');
-                e.preventDefault();
-                e.stopPropagation();
-
-                if (!isFormValid) {
-                  showError('Please fix all validation errors before submitting', 'Error');
-                  return;
-                }
-
-                // Quick validation
-                if (!formData.purpose || !formData.justification || !formData.amountRequested || formData.amountRequested <= 0) {
-                  showError('Please fill in required fields: Purpose, Justification, and Amount', 'Error');
-                  return;
-                }
-
-                // Validate amount against items total
-                if (showItems && items.length > 0) {
-                  const itemsTotal = calculateTotalFromItems();
-                  if (formData.amountRequested < itemsTotal) {
-                    showError(`Amount requested (₱${formData.amountRequested.toLocaleString()}) must be greater than or equal to items total (₱${itemsTotal.toLocaleString()})`, 'Error');
-                    return;
-                  }
-                }
-
-                try {
-                  console.log('Creating submission payload...', formData);
-                  const payload: NewBudgetRequest = {
-                    ...formData,
-                    status: 'PENDING',
-                    items: showItems && items.length > 0 ? items : undefined,
-                    supporting_documents: supportingDocuments.length > 0 ? supportingDocuments : undefined
-                  };
-
-                  console.log('Calling onAddBudgetRequest with payload:', payload);
-                  await onAddBudgetRequest(payload);
-                  console.log('onAddBudgetRequest completed successfully');
-
-                  showSuccess('Request submitted successfully!', 'Success');
-                  onClose();
-                } catch (error) {
-                  console.error('Error submitting request:', error);
-                  showError('Error submitting request: ' + (error instanceof Error ? error.message : String(error)), 'Error');
-                }
-              }}
+              onClick={(e) => handleSubmit(e, false)}
             >
               <i className="ri-send-plane-line" /> Submit for Approval
             </button>

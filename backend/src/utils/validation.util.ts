@@ -50,6 +50,14 @@ export const budgetRequestSchema = Joi.object({
   pr_reference_code: Joi.string().optional(),
   linkedPurchaseRequestRefNo: Joi.string().optional(),
 
+  // New schema fields
+  fiscal_year: Joi.number().optional().default(2025),
+  fiscal_period: Joi.string().optional(),
+  category: Joi.string().optional(),
+  start_date: Joi.date().iso().optional(),
+  end_date: Joi.date().iso().min(Joi.ref('start_date')).optional(),
+  urgency_reason: Joi.string().optional().allow('', null),
+
   items: Joi.array()
     .items(
       Joi.object({

@@ -5,7 +5,7 @@ import { Router } from 'express';
 import * as budgetRequestController from '../../../controllers/budgetRequest.controller';
 import { checkPermission } from '../../../middlewares/permission.middleware';
 import { verifyJWT } from '../../../middlewares/auth.middleware';
-import { 
+import {
   validateCreateBudgetRequest,
   validateApproval
 } from '../../../middlewares/validation.middleware';
@@ -58,6 +58,28 @@ router.post(
   '/:id/submit',
   checkPermission({ action: 'submit', scope: 'all' }),
   budgetRequestController.submitBudgetRequest
+);
+
+/**
+ * PUT /api/finance/admin/budget-requests/:id
+ * Update budget request
+ * Permission: Edit department requests
+ */
+router.put(
+  '/:id',
+  checkPermission({ action: 'edit', scope: 'department' }),
+  budgetRequestController.updateBudgetRequest
+);
+
+/**
+ * DELETE /api/finance/admin/budget-requests/:id
+ * Delete budget request
+ * Permission: Delete department requests
+ */
+router.delete(
+  '/:id',
+  checkPermission({ action: 'delete', scope: 'department' }),
+  budgetRequestController.deleteBudgetRequest
 );
 
 export default router;
