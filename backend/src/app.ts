@@ -8,9 +8,13 @@ import { apiLimiter } from './middlewares/rateLimit.middleware';
 
 const app: Application = express();
 
-// CORS configuration
+// CORS configuration - parse comma-separated origins into array
+const corsOrigins = process.env.CORS_ORIGIN 
+  ? process.env.CORS_ORIGIN.split(',').map(origin => origin.trim())
+  : '*';
+
 app.use(cors({
-  origin: process.env.CORS_ORIGIN || '*',
+  origin: corsOrigins,
   credentials: true
 }));
 

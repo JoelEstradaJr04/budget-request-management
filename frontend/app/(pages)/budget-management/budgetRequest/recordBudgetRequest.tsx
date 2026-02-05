@@ -82,7 +82,7 @@ const AddBudgetRequest: React.FC<AddBudgetRequestProps> = ({
     department: 'Finance', // Auto-filled
     createdByName: 'Finance Admin', // Auto-filled
     createdByPosition: 'Admin', // Auto-filled
-    fiscalYear: 2025,
+    fiscalYear: new Date().getFullYear(),
     fiscalPeriod: '',
     category: '',
     priority: '',
@@ -729,7 +729,8 @@ const AddBudgetRequest: React.FC<AddBudgetRequestProps> = ({
                     onChange={handleInputChange}
                     required
                     className="formInput"
-                    min={new Date().toISOString().split('T')[0]}
+                    min={`${formData.fiscalYear}-01-01`}
+                    max={`${formData.fiscalYear}-12-31`}
                   />
                   {validationErrors.start_date && (
                     <div className="error-message">{validationErrors.start_date}</div>
@@ -746,7 +747,8 @@ const AddBudgetRequest: React.FC<AddBudgetRequestProps> = ({
                     onChange={handleInputChange}
                     required
                     className="formInput"
-                    min={formData.start_date || new Date().toISOString().split('T')[0]}
+                    min={formData.start_date || `${formData.fiscalYear}-01-01`}
+                    max={`${formData.fiscalYear}-12-31`}
                   />
                   {validationErrors.end_date && (
                     <div className="error-message">{validationErrors.end_date}</div>
