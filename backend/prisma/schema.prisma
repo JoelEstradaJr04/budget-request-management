@@ -66,6 +66,15 @@ status              budget_request_status   @default(PENDING)
 purpose             String?                 @db.Text
 remarks             String?
 request_type        request_type            @default(REGULAR)
+
+// New fields for extended form data
+fiscal_year         Int?                    @default(2025)
+fiscal_period       String?                 // Q1, Q2, etc.
+category            String?                 // Operational, Capital, etc. (Top level)
+start_date          DateTime?
+end_date            DateTime?
+urgency_reason      String?                 @db.Text
+
 pr_reference_code   String?                 // nullable link to Purchase Request if applicable
 
 approved_by         String?

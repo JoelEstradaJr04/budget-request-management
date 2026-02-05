@@ -9,25 +9,25 @@ export const showEmptyFieldWarning = () => {
     background: 'white',
     backdrop: false,
     customClass: {
-    popup: 'swal-custom-popup'
-  }
+      popup: 'swal-custom-popup'
+    }
   });
 };
 
 export const showInvalidCategoryAlert = () => {
-    return Swal.fire({
-      icon: 'error',
-      title: 'Invalid Category',
-      text: 'Please select a valid category.',
-      confirmButtonColor: '#961C1E',
-      background: 'white',
-      backdrop: false,
-      customClass: {
-    popup: 'swal-custom-popup'
-  }
-    });
-  };
-  
+  return Swal.fire({
+    icon: 'error',
+    title: 'Invalid Category',
+    text: 'Please select a valid category.',
+    confirmButtonColor: '#961C1E',
+    background: 'white',
+    backdrop: false,
+    customClass: {
+      popup: 'swal-custom-popup'
+    }
+  });
+};
+
 export const showInvalidSourceAlert = () => {
   return Swal.fire({
     icon: 'error',
@@ -37,8 +37,8 @@ export const showInvalidSourceAlert = () => {
     background: 'white',
     backdrop: false,
     customClass: {
-    popup: 'swal-custom-popup'
-  }
+      popup: 'swal-custom-popup'
+    }
   });
 };
 
@@ -51,8 +51,8 @@ export const showInvalidAmountAlert = () => {
     background: 'white',
     backdrop: false,
     customClass: {
-    popup: 'swal-custom-popup'
-  }
+      popup: 'swal-custom-popup'
+    }
   });
 }
 
@@ -68,8 +68,8 @@ export const showAddConfirmation = () => {
     cancelButtonColor: '#ECECEC',
     backdrop: false,
     customClass: {
-    popup: 'swal-custom-popup'
-  }
+      popup: 'swal-custom-popup'
+    }
   });
 };
 
@@ -82,15 +82,15 @@ export const showAddSuccess = () => {
     background: 'white',
     backdrop: false,
     customClass: {
-    popup: 'swal-custom-popup'
-  }
+      popup: 'swal-custom-popup'
+    }
   });
 };
 
 
 //-----------------------ADD RECORD---------------------//
 //SUCCESS
-export const showSuccess = (message: string, title:string) => {
+export const showSuccess = (message: string, title: string) => {
   Swal.fire({
     icon: 'success',
     title: title,
@@ -102,14 +102,18 @@ export const showSuccess = (message: string, title:string) => {
     timerProgressBar: true,
     showConfirmButton: false,
     customClass: {
-    popup: 'swal-custom-popup'
-  }
+      popup: 'swal-custom-popup'
+    }
   });
 };
 
 //FAILED/ERROR
 
 export const showError = (message: string, title: string) => {
+  if (typeof window !== 'undefined') {
+    console.error('ShowError:', title, message);
+    window.alert(`[${title}] ${message}`);
+  }
   Swal.fire({
     icon: 'error',
     title: title,
@@ -121,8 +125,8 @@ export const showError = (message: string, title: string) => {
     timerProgressBar: true,
     showConfirmButton: false,
     customClass: {
-    popup: 'swal-custom-popup'
-  }
+      popup: 'swal-custom-popup'
+    }
   });
 };
 
@@ -137,8 +141,8 @@ export const showWarning = (message: string) => {
     timer: 3000,
     timerProgressBar: true,
     customClass: {
-    popup: 'swal-custom-popup'
-  }
+      popup: 'swal-custom-popup'
+    }
   });
 };
 
@@ -154,8 +158,8 @@ export const showInformation = (message: string, title: string) => {
     timer: 3000,
     timerProgressBar: true,
     customClass: {
-    popup: 'swal-custom-popup'
-  }
+      popup: 'swal-custom-popup'
+    }
   });
 };
 
@@ -172,9 +176,10 @@ export const showConfirmation = (message: string, title: string) => {
     confirmButtonColor: '#961C1E',
     cancelButtonColor: '#FEB71F',
     reverseButtons: true,
+    allowOutsideClick: false,
     customClass: {
-    popup: 'swal-custom-popup'
-  }
+      popup: 'swal-custom-popup'
+    }
   });
 };
 

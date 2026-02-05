@@ -39,6 +39,13 @@ export interface BudgetRequest {
   created_at: string;
   updated_at?: string;
   is_deleted: boolean;
+  // New fields
+  fiscal_year?: number;
+  fiscal_period?: string;
+  category?: string;
+  start_date?: string;
+  end_date?: string;
+  urgency_reason?: string;
 }
 
 export interface CreateBudgetRequestDto {

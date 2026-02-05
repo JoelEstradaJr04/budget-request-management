@@ -88,7 +88,8 @@ textarea.input-error {
   box-shadow: none !important;
 }
 
-.modalButtons, .filters {
+.modalButtons,
+.filters {
   display: flex !important;
   gap: var(--page-button-gap) !important;
   justify-content: flex-end !important;
@@ -114,12 +115,15 @@ textarea.input-error {
 .addButton {
   background: var(--primary-color) !important;
 }
+
 .addButton:hover {
   background: var(--primary-hover-color) !important;
 }
+
 .addButton:disabled {
   background: var(--button-disabled-color) !important;
 }
+
 .addButton:disabled:hover {
   background: var(--button-disabled-color) !important;
 }
@@ -143,7 +147,8 @@ textarea.input-error {
   /* Main Colors */
   --background-color: #F3F2F9;
   --foreground-color: #FFFFFF;
-  --primary-color: #961C1E; /* also for add, save button */
+  --primary-color: #961C1E;
+  /* also for add, save button */
   --secondary-color: #FEB71F;
 
   /* Text Colors */
@@ -151,11 +156,14 @@ textarea.input-error {
   --secondary-text-color: #404040;
 
   /* Semantic COlors */
-  --success-color: #13CE66; /* also for view button */
-  --error-color: #FF4949;   /* also for delete button */
-  --info-color: #2D8EFF;    /* also for edit button */
+  --success-color: #13CE66;
+  /* also for view button */
+  --error-color: #FF4949;
+  /* also for delete button */
+  --info-color: #2D8EFF;
+  /* also for edit button */
   --warning-color: #FFCC3D;
-  
+
   /* Table Colors */
   --border-color: #B3B3B3;
   --table-header-color: #D8D8D8;
@@ -180,13 +188,16 @@ textarea.input-error {
   /* Hover Colors */
   --primary-hover-color: #761C1D;
   --secondary-hover-color: #ECAB1E;
-  --success-hover-color: #12B75C; /* hover view button */ 
-  --error-hover-color: #DE3939;   /* hover delete button */ 
-  --info-hover-color: #267BDB;    /* hover edit button */ 
+  --success-hover-color: #12B75C;
+  /* hover view button */
+  --error-hover-color: #DE3939;
+  /* hover delete button */
+  --info-hover-color: #267BDB;
+  /* hover edit button */
   --table-header-hover-color: #DDDDDD;
   --table-row-hover-color: #ECECEC;
   --warning-hover-color: #E6B800;
-  
+
   /* Shadow */
   --box-shadow: 0 2px 4px rgba(0, 0, 0, 0.15);
 
@@ -257,7 +268,7 @@ textarea.input-error {
   --table-header-height: 40px;
   --table-row-height: 40px;
   --table-cell-padding: 0 15px;
-  --table-min-height:70%;
+  --table-min-height: 70%;
 
   /* ================ MODALS ================ */
   --modal-padding: 32px;
@@ -313,7 +324,8 @@ textarea.input-error {
 
   /* ================ DASHBOARD ================ */
   --card-title-font-size: 16px;
-  --card-title-font-weight: normal; /* Fixed typo: weigth -> weight */
+  --card-title-font-weight: normal;
+  /* Fixed typo: weigth -> weight */
   --card-number-font-size: 2.2rem;
   --card-number-font-weight: 700;
   --card-padding: 1.5rem;
@@ -337,7 +349,9 @@ body {
    UNIFIED MODAL HEADER STYLES
    ============================================================ */
 
-.modalHeader, .modal-header, .revenue-modalHeader {
+.modalHeader,
+.modal-header,
+.revenue-modalHeader {
   display: flex !important;
   align-items: center !important;
   justify-content: space-between !important;
@@ -410,7 +424,8 @@ body {
   transform: none !important;
 } */
 
-.closeButton i, .close-btn i {
+.closeButton i,
+.close-btn i {
   font-size: 1.25rem !important;
   line-height: 1 !important;
 }
@@ -497,7 +512,18 @@ body {
   * {
     @apply border-border outline-ring/50;
   }
+
   body {
     @apply bg-background text-foreground;
   }
+}
+
+/* Ensure SweetAlert popup is above the modalOverlay (z-index: 1050) and microservice-container (z-index: 9999) */
+body .swal2-container,
+.swal2-container {
+  z-index: 100000 !important;
+}
+
+.swal-custom-popup {
+  z-index: 100001 !important;
 }

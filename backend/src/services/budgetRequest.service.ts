@@ -83,7 +83,14 @@ export async function create(data: any, user: UserContext) {
         remarks: data.remarks || null,
         request_type: data.request_type || data.requestType || 'REGULAR',
         pr_reference_code: data.pr_reference_code || data.linkedPurchaseRequestRefNo || null,
-        status: data.status || 'PENDING'
+        status: data.status || 'PENDING',
+        // New fields
+        fiscal_year: data.fiscal_year || 2025,
+        fiscal_period: data.fiscal_period || null,
+        category: data.category || null,
+        start_date: data.start_date ? new Date(data.start_date) : null,
+        end_date: data.end_date ? new Date(data.end_date) : null,
+        urgency_reason: data.urgency_reason || null
       }
     });
 
@@ -248,7 +255,14 @@ export async function updateBudgetRequest(id: number, data: any, user: UserConte
       remarks: data.remarks,
       request_type: data.request_type,
       department_name: data.department_name,
-      department_id: data.department || data.department_id
+      department_id: data.department || data.department_id,
+      // New fields for update
+      fiscal_year: data.fiscal_year,
+      fiscal_period: data.fiscal_period,
+      category: data.category,
+      start_date: data.start_date ? new Date(data.start_date) : undefined,
+      end_date: data.end_date ? new Date(data.end_date) : undefined,
+      urgency_reason: data.urgency_reason
     },
     include: {
       items: {
